@@ -151,35 +151,35 @@ simulation create_simulation_3()
 
     for (size_t r = 0; r < rows; ++r)
     {
-        float y = -3500 + (float)r * xdist;
+        float y = -3000 + (float)r * xdist;
         for (size_t c = 0; c < cols; ++c)
         {
             float x = -7000 + (float)c * ydist;
 
-            const auto fixed = (r < 16 && c < 9);
+            const auto fixed = (r < 4 && (c < cols / 4 || c > 3 * cols / 5));
 
             const auto mass_id = r <  rows / 2 ?
                 simulation::add_mass(100., radius, double2{ x, y }, double2{0, 0}, double2{}, fixed, masses, mass_states)
-                : simulation::add_mass(100., radius, double2{ x, y }, double2{r % 3 - 3.0f, -2.0f}, double2{}, fixed, masses, mass_states);
+                : simulation::add_mass(100., radius, double2{ x, y }, double2{0, 0}, double2{}, fixed, masses, mass_states);
 
             if (r < rows - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c, true, 2, ydist, springs, spring_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c, true, rows - r, ydist, springs, spring_states);
                 simulation::add_damper(mass_id, (r + 1) * cols + c, ks, 1, springs[spring_id], dampers, damper_states);
             }
             if (c < cols - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r) * cols + c + 1, true, 2, xdist, springs, spring_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r) * cols + c + 1, true, 5, xdist, springs, spring_states);
                 simulation::add_damper(mass_id, (r) * cols + c + 1, ks, 1, springs[spring_id], dampers, damper_states);
             }
             if (r < rows - 1 && c < cols - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c + 1, true, 20, ddist, springs, spring_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c + 1, true, rows - r, ddist, springs, spring_states);
                 simulation::add_damper(mass_id, (r + 1) * cols + c + 1, ks, 1, springs[spring_id], dampers, damper_states);
             }
             if (r > 0 && c < cols - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r - 1) * cols + c + 1, true, 2, ddist, springs, spring_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r - 1) * cols + c + 1, true, 5, ddist, springs, spring_states);
                 simulation::add_damper(mass_id, (r - 1) * cols + c + 1, ks, 1, springs[spring_id], dampers, damper_states);
             }
         }

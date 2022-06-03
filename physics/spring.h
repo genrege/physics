@@ -3,7 +3,7 @@
 class spring
 {
 public:
-    spring(size_t id_mass1, size_t id_mass2, float k, float l0, float min_length = 0.5, float max_length = 1.3)
+    spring(size_t id_mass1, size_t id_mass2, float k, float l0, float min_length = 0.5, float max_length = 1.5)
         : id_mass1_(id_mass1), id_mass2_(id_mass2), k_(k), l0_(l0), min_length_(min_length), max_length_(max_length)
     {
 

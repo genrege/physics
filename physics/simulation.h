@@ -106,7 +106,7 @@ public:
             const auto& m1 = model_.masses()[i];
             const auto& position1 = state[i].position_;
 
-            for (size_t j = 0; j < count_masses; ++j)
+            for (int j = 0; j < count_masses; ++j)
             {
                 if (j == i)
                     continue;
