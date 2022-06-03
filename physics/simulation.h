@@ -7,7 +7,7 @@
 struct mass_state
 {
     mass_state() = default;
-    mass_state(const double2& position, const double2& force, const double2& velocity, const double2& acceleration, double angular_velocity, double angular_position, bool fixed)
+    mass_state(const double2& position, const double2& force, const double2& velocity, const double2& acceleration, float angular_velocity, float angular_position, bool fixed)
         : position_(position), force_(force), velocity_(velocity), acceleration_(acceleration), angular_velocity_(angular_velocity), angular_position_(angular_position), fixed_(fixed)
     {}
 
@@ -16,8 +16,8 @@ struct mass_state
     double2 velocity_;
     double2 acceleration_;
     
-    double  angular_velocity_;
-    double  angular_position_;
+    float  angular_velocity_;
+    float  angular_position_;
 
     bool fixed_;    //if true doesn't move
 };
@@ -41,21 +41,21 @@ class simulation
 public:
     simulation(const model_system& model) : model_(model) {}
 
-    static size_t add_mass(double m, double r, double2 position, double2 velocity, double2 acceleration, bool fixed, std::vector<mass>& masses, std::vector<mass_state>& state)
+    static size_t add_mass(float m, float r, double2 position, double2 velocity, double2 acceleration, bool fixed, std::vector<mass>& masses, std::vector<mass_state>& state)
     {
         masses.emplace_back(m, r);
-        state.emplace_back(position, double2{}, velocity, acceleration, 0.0, 0.0, fixed);
+        state.emplace_back(position, double2{}, velocity, acceleration, 0.0f, 0.0f, fixed);
         return masses.size() - 1;
     }
 
-    static size_t add_spring(size_t id_mass1, size_t id_mass2, bool working, double k, double l0, std::vector<spring>& springs, std::vector<spring_state>& state)
+    static size_t add_spring(size_t id_mass1, size_t id_mass2, bool working, float k, float l0, std::vector<spring>& springs, std::vector<spring_state>& state)
     {
         springs.emplace_back(id_mass1, id_mass2, k, l0);
         state.emplace_back(false);
         return springs.size() - 1;
     }
 
-    static size_t add_damper(size_t id_mass1, size_t id_mass2, double k, double l0, const spring& spring, std::vector<damper>& dampers, std::vector<damper_state>& state)
+    static size_t add_damper(size_t id_mass1, size_t id_mass2, float k, float l0, const spring& spring, std::vector<damper>& dampers, std::vector<damper_state>& state)
     {
         dampers.emplace_back(id_mass1, id_mass2, spring);
         state.emplace_back(false);
@@ -122,7 +122,7 @@ public:
                 //Calculate scalar gravitational force acting on m1 due to m2 and apply to unit vector
                 const auto scalar_force = distance > constants::minimum_distance ?
                     constants::G * m1.m() * m2.m() / (distance * distance)
-                    : 0.0;
+                    : 0.0f;
                 state[i].force_ += scalar_force * u;
             }
         }
@@ -185,7 +185,7 @@ public:
         }
     }
 
-    void update_spatial(std::vector<mass_state>& state, double dt) const
+    void update_spatial(std::vector<mass_state>& state, float dt) const
     {
         const auto count_masses = model_.masses().size();
 
@@ -232,14 +232,14 @@ public:
 
     }
 
-    void update_floor(double limit, std::vector<mass_state>& state) const
+    void update_floor(float limit, std::vector<mass_state>& state) const
     {
         for (int i = 0; i < state.size(); ++i)
         {
             auto& s = state[i];
             if (s.position_.y() + model_.masses()[i].r() > limit)
             {
-                s.velocity_ = double2(0.5 * s.velocity_.x(), -0.7 * abs(s.velocity_.y()));
+                s.velocity_ = double2(0.5f * s.velocity_.x(), -0.7f * fabs(s.velocity_.y()));
             }
         }
     }

@@ -9,6 +9,8 @@
 #include <process.h>
 #include <string>
 
+
+
 #define MAX_LOADSTRING 100
 
 // Global Variables:
@@ -102,7 +104,7 @@ simulation create_simulation_2()
     std::vector<spring> springs;
     std::vector<damper> dampers;
 
-    simulation::add_mass(constants::earth_mass * 0.001, 20, { 0.0, constants::earth_radius }, { 0,0 }, {}, false, masses, mass_states);
+    simulation::add_mass(constants::earth_mass * 0.001f, 20.0f, { 0.0f, constants::earth_radius }, { 0.0f, 0.0f }, {}, false, masses, mass_states);
 
     const auto m0 = simulation::add_mass(100, 20, { 500, 100},  {-3,0}, {}, false, masses, mass_states);
     const auto m1 = simulation::add_mass(100, 20, { 600, 100},  {}, {}, false, masses, mass_states);
@@ -138,27 +140,27 @@ simulation create_simulation_3()
     std::vector<spring> springs;
     std::vector<damper> dampers;
 
-    size_t rows = 32;
-    size_t cols = 32;
+    size_t rows = 24;
+    size_t cols = 40;
 
-    double xdist = 100;
-    double ydist = 100;
-    double ddist = sqrt(xdist * xdist + ydist * ydist);
-    double radius = 25;
-    double ks = 10;
+    float xdist = 100;
+    float ydist = 100;
+    float ddist = sqrt(xdist * xdist + ydist * ydist);
+    float radius = 2;
+    float ks = 10;
 
     for (size_t r = 0; r < rows; ++r)
     {
-        double y = -3500 + (double)r * xdist;
+        float y = -3500 + (float)r * xdist;
         for (size_t c = 0; c < cols; ++c)
         {
-            double x = -7000 + (double)c * ydist;
+            float x = -7000 + (float)c * ydist;
 
-            const auto fixed = (r < 20 && c < 9);
+            const auto fixed = (r < 16 && c < 9);
 
             const auto mass_id = r <  rows / 2 ?
-                simulation::add_mass(100, radius, { x, y }, {0, 0}, {}, fixed, masses, mass_states)
-                : simulation::add_mass(100, radius, { x, y }, {r % 3 - 3.0, -2.0}, {}, fixed, masses, mass_states);
+                simulation::add_mass(100., radius, double2{ x, y }, double2{0, 0}, double2{}, fixed, masses, mass_states)
+                : simulation::add_mass(100., radius, double2{ x, y }, double2{r % 3 - 3.0f, -2.0f}, double2{}, fixed, masses, mass_states);
 
             if (r < rows - 1)
             {
@@ -182,7 +184,7 @@ simulation create_simulation_3()
             }
         }
     }
-    simulation::add_mass(constants::earth_mass * 0.05, 20, { 0.0, constants::earth_radius }, { 0,0 }, {}, false, masses, mass_states);
+    simulation::add_mass(constants::earth_mass * 0.05f, 20.0f, { 0.0f, constants::earth_radius }, { 0.0f, 0.0f }, {}, false, masses, mass_states);
 
     return model_system(masses, springs, dampers);
 }
@@ -197,14 +199,14 @@ simulation create_simulation_4()
     const auto m1 = simulation::add_mass(100, 20, { 800, 100 }, {}, {}, false, masses, mass_states);
 
     const auto spring_id = simulation::add_spring(m0, m1, true, 10, 400, springs, spring_states);
-    simulation::add_damper(m0, m1, 0.14, 100, springs[spring_id], dampers, damper_states);
+    simulation::add_damper(m0, m1, 0.14f, 100, springs[spring_id], dampers, damper_states);
 
     return model_system(masses, springs, dampers);
 }
 
 simulation sim = create_simulation_3();
 
-double clock = 0.0;
+float clock = 0.0;
 HWND hwnd_client = 0;
 CRITICAL_SECTION cs;
 unsigned threadid;
@@ -215,8 +217,8 @@ unsigned __stdcall simulation_thread(void* p)
 {
     while (!exitthread)
     {
-        size_t iterations_per_update = 5;
-        const double dt = .2;
+        size_t iterations_per_update = 2;
+        const float dt = 0.5;
 
         EnterCriticalSection(&cs);
         for (size_t i = 0; i < iterations_per_update; ++i)
@@ -229,7 +231,7 @@ unsigned __stdcall simulation_thread(void* p)
             sim.update_spatial(mass_states, dt);
             RECT rc;
             GetClientRect(hwnd_client, &rc);
-            sim.update_floor((double)rc.bottom * 4 - 20, mass_states);
+            sim.update_floor((float)rc.bottom * 4 - 20, mass_states);
             clock += dt;
         }
         LeaveCriticalSection(&cs);
@@ -394,7 +396,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             RECT rc;
             GetClientRect(hWnd, &rc);
 
-            const auto aspect_ratio = double(rc.right - rc.left) / double(rc.bottom - rc.top);
+            const auto aspect_ratio = float(rc.right - rc.left) / float(rc.bottom - rc.top);
 
             //this one for gravity sim 
             //viewport vp(rc, -70000000 * aspect_ratio, 70000000 * aspect_ratio, -70000000.0, 70000000.0);
@@ -413,12 +415,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             SelectObject(hmemDC, brush);
 
             EnterCriticalSection(&cs);
-            for (int i = 0; i < sim.model().springs().size(); ++i)
+            const auto& sim_copy = sim;
+            LeaveCriticalSection(&cs);
+            for (int i = 0; i < sim_copy.model().springs().size(); ++i)
             {
                 if (spring_states[i].broken_)
                     continue;
 
-                const auto& spring = sim.model().springs()[i];
+
+                const auto& spring = sim_copy.model().springs()[i];
                 const auto& p1 = mass_states[spring.id_mass1()].position_;
                 const auto& p2 = mass_states[spring.id_mass2()].position_;
 
@@ -431,9 +436,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 LineTo(hmemDC, x2, y2);
             }
 
-            for (int i = 0; i < sim.model().masses().size(); ++i)
+            for (int i = 0; i < sim_copy.model().masses().size(); ++i)
             {
-                const auto& m = sim.model().masses()[i];
+                const auto& m = sim_copy.model().masses()[i];
                 const auto& position = mass_states[i].position_;
 
                 const auto left = vp.x_to_screen(position.x()   - m.r()) - 1;
@@ -443,7 +448,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                 Ellipse(hmemDC, left, top, right, bottom);
             }
-            LeaveCriticalSection(&cs);
 
             BitBlt(hdc, 0, 0, rc.right, rc.bottom, hmemDC, 0, 0, SRCCOPY);
 
