@@ -146,7 +146,7 @@ simulation create_simulation_3()
     float xdist = 100;
     float ydist = 100;
     float ddist = sqrt(xdist * xdist + ydist * ydist);
-    float radius = 2;
+    float radius = 15;
     float ks = 10;
 
     for (size_t r = 0; r < rows; ++r)
