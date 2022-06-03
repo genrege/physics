@@ -229,7 +229,7 @@ unsigned __stdcall simulation_thread(void* p)
             sim.update_spatial(mass_states, dt);
             RECT rc;
             GetClientRect(hwnd_client, &rc);
-            //sim.update_floor((double)rc.bottom * 4 - 20, mass_states);
+            sim.update_floor((double)rc.bottom * 4 - 20, mass_states);
             clock += dt;
         }
         LeaveCriticalSection(&cs);
