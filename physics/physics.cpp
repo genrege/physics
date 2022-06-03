@@ -6,6 +6,7 @@
 #include "simulation.h"
 #include "coordinate_translation.h"
 
+#include <process.h>
 #include <string>
 
 #define MAX_LOADSTRING 100
@@ -89,12 +90,8 @@ simulation create_simulation_1()
         mass_states);
 
     std::vector<spring> springs;
-    const auto spring1_id = simulation::add_spring(0, 1, true, 1e17, 5 * constants::earth_radius, springs, spring_states);
-    const auto spring2_id = simulation::add_spring(1, 2, true, 1e16, 4 * constants::earth_radius, springs, spring_states);
     
     std::vector<damper> dampers;
-    simulation::add_damper(0, 1, 1e9, 5 * constants::earth_radius, springs[spring1_id], dampers, damper_states);
-    simulation::add_damper(1, 2, 1e6, 5 * constants::earth_radius, springs[spring2_id], dampers, damper_states);
 
     return model_system(masses, springs, dampers);
 }
@@ -141,51 +138,51 @@ simulation create_simulation_3()
     std::vector<spring> springs;
     std::vector<damper> dampers;
 
-    size_t rows = 6;
+    size_t rows = 32;
     size_t cols = 32;
 
-    double xdist = 200;
-    double ydist = 200;
+    double xdist = 100;
+    double ydist = 100;
     double ddist = sqrt(xdist * xdist + ydist * ydist);
-    double radius = 50;
+    double radius = 25;
     double ks = 10;
 
     for (size_t r = 0; r < rows; ++r)
     {
-        double y = -2500 + (double)r * xdist;
+        double y = -3500 + (double)r * xdist;
         for (size_t c = 0; c < cols; ++c)
         {
-            double x = 400 + (double)c * ydist;
+            double x = -7000 + (double)c * ydist;
 
-            const auto fixed = (r == 0 && c == 0);
+            const auto fixed = (r < 20 && c < 9);
 
             const auto mass_id = r <  rows / 2 ?
-                simulation::add_mass(1000, radius, { x, y }, {0, 0}, {}, fixed, masses, mass_states)
-                : simulation::add_mass(1000, radius, { x, y }, {0, 0}, {}, fixed, masses, mass_states);
+                simulation::add_mass(100, radius, { x, y }, {0, 0}, {}, fixed, masses, mass_states)
+                : simulation::add_mass(100, radius, { x, y }, {r % 3 - 3.0, -2.0}, {}, fixed, masses, mass_states);
 
             if (r < rows - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c, true, 4, ydist, springs, spring_states);
-                simulation::add_damper(mass_id, (r + 1) * cols + c, ks, 100, springs[spring_id], dampers, damper_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c, true, 2, ydist, springs, spring_states);
+                simulation::add_damper(mass_id, (r + 1) * cols + c, ks, 1, springs[spring_id], dampers, damper_states);
             }
             if (c < cols - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r) * cols + c + 1, true, 4, xdist, springs, spring_states);
-                simulation::add_damper(mass_id, (r) * cols + c + 1, ks, 100, springs[spring_id], dampers, damper_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r) * cols + c + 1, true, 2, xdist, springs, spring_states);
+                simulation::add_damper(mass_id, (r) * cols + c + 1, ks, 1, springs[spring_id], dampers, damper_states);
             }
             if (r < rows - 1 && c < cols - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c + 1, true, 4, ddist, springs, spring_states);
-                simulation::add_damper(mass_id, (r + 1) * cols + c + 1, ks, 100, springs[spring_id], dampers, damper_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c + 1, true, 20, ddist, springs, spring_states);
+                simulation::add_damper(mass_id, (r + 1) * cols + c + 1, ks, 1, springs[spring_id], dampers, damper_states);
             }
             if (r > 0 && c < cols - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r - 1) * cols + c + 1, true, 4, ddist, springs, spring_states);
-                simulation::add_damper(mass_id, (r - 1) * cols + c + 1, ks, 100, springs[spring_id], dampers, damper_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r - 1) * cols + c + 1, true, 2, ddist, springs, spring_states);
+                simulation::add_damper(mass_id, (r - 1) * cols + c + 1, ks, 1, springs[spring_id], dampers, damper_states);
             }
         }
     }
-    simulation::add_mass(constants::earth_mass * 0.001, 20, { 0.0, constants::earth_radius }, { 0,0 }, {}, false, masses, mass_states);
+    simulation::add_mass(constants::earth_mass * 0.05, 20, { 0.0, constants::earth_radius }, { 0,0 }, {}, false, masses, mass_states);
 
     return model_system(masses, springs, dampers);
 }
@@ -208,36 +205,39 @@ simulation create_simulation_4()
 simulation sim = create_simulation_3();
 
 double clock = 0.0;
+HWND hwnd_client = 0;
+CRITICAL_SECTION cs;
+unsigned threadid;
+HANDLE hthread;
+bool exitthread = false;
 
-void update_simulation(HWND hwnd, UINT, UINT_PTR, DWORD)
+unsigned __stdcall simulation_thread(void* p)
 {
-    size_t iterations_per_update = 2;
-    const double dt = 0.5;
-
-    for (size_t i = 0; i < iterations_per_update; ++i)
+    while (!exitthread)
     {
-        sim.prepare_for_update(mass_states);
-        sim.update_broken_springs_and_dampers(mass_states, spring_states, damper_states);
-        sim.update_gravitational_force(mass_states);
-        sim.update_spring_force(mass_states, spring_states);
-        sim.update_damper_force(mass_states, damper_states);
-        sim.update_spatial(mass_states, dt);
-        RECT rc;
-        GetClientRect(hwnd, &rc);
-        sim.update_floor((double)rc.bottom * 4 - 20, mass_states);
-        clock += dt;
+        size_t iterations_per_update = 5;
+        const double dt = .2;
+
+        EnterCriticalSection(&cs);
+        for (size_t i = 0; i < iterations_per_update; ++i)
+        {
+            sim.prepare_for_update(mass_states);
+            sim.update_broken_springs_and_dampers(mass_states, spring_states, damper_states);
+            sim.update_gravitational_force(mass_states);
+            sim.update_spring_force(mass_states, spring_states);
+            sim.update_damper_force(mass_states, damper_states);
+            sim.update_spatial(mass_states, dt);
+            RECT rc;
+            GetClientRect(hwnd_client, &rc);
+            //sim.update_floor((double)rc.bottom * 4 - 20, mass_states);
+            clock += dt;
+        }
+        LeaveCriticalSection(&cs);
+        Sleep(0);
+        if (!exitthread)
+            SendMessage(hwnd_client, WM_USER + 1, 0, 0);
     }
-
-    InvalidateRect(hwnd, NULL, FALSE);
-    UpdateWindow(hwnd);
-
-    static bool first = true;
-    if (first)
-    {
-        first = false;
-        Sleep(2000);
-    }
-
+    return 0;
 }
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -321,15 +321,19 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
+   hwnd_client = hWnd;
+
+   InitializeCriticalSection(&cs);
+
    if (!hWnd)
    {
       return FALSE;
    }
 
+   hthread = (HANDLE)_beginthreadex(NULL, 0, &simulation_thread, NULL, 0, &threadid);
+
    ShowWindow(hWnd, SW_SHOWMAXIMIZED);
    UpdateWindow(hWnd);
-
-   SetTimer(hWnd, 1, 1, update_simulation);
 
    return TRUE;
 }
@@ -346,8 +350,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    hwnd_client = hWnd;
     switch (message)
     {
+    case WM_CLOSE:
+        exitthread = true;
+        WaitForSingleObject(hthread, INFINITE);
+        DestroyWindow(hWnd);
+        break;
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
@@ -358,12 +368,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
             case IDM_EXIT:
+                exitthread = true;
+                WaitForSingleObject(hthread, INFINITE);
+               
                 DestroyWindow(hWnd);
                 break;
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
             }
         }
+        break;
+    case WM_USER + 1:
+    {
+        RECT rc;
+        GetClientRect(hWnd, &rc);
+        InvalidateRect(hWnd, &rc, FALSE);
+        UpdateWindow(hWnd);
+    }
         break;
     case WM_PAINT:
         {
@@ -391,6 +412,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             auto brush = CreateSolidBrush(RGB(255, 0, 0));
             SelectObject(hmemDC, brush);
 
+            EnterCriticalSection(&cs);
             for (int i = 0; i < sim.model().springs().size(); ++i)
             {
                 if (spring_states[i].broken_)
@@ -411,17 +433,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             for (int i = 0; i < sim.model().masses().size(); ++i)
             {
-                continue;
                 const auto& m = sim.model().masses()[i];
                 const auto& position = mass_states[i].position_;
 
-                const auto left = vp.x_to_screen(position.x()   - 0.1 * m.r()) - 1;
-                const auto top = vp.y_to_screen(position.y()    - 0.1 * m.r()) - 1;
-                const auto right = vp.x_to_screen(position.x()  + 0.1 * m.r()) + 1;
-                const auto bottom = vp.y_to_screen(position.y() + 0.1 * m.r()) + 1;
+                const auto left = vp.x_to_screen(position.x()   - m.r()) - 1;
+                const auto top = vp.y_to_screen(position.y()    - m.r()) - 1;
+                const auto right = vp.x_to_screen(position.x()  + m.r()) + 1;
+                const auto bottom = vp.y_to_screen(position.y() + m.r()) + 1;
 
                 Ellipse(hmemDC, left, top, right, bottom);
             }
+            LeaveCriticalSection(&cs);
 
             BitBlt(hdc, 0, 0, rc.right, rc.bottom, hmemDC, 0, 0, SRCCOPY);
 

@@ -239,7 +239,7 @@ public:
             auto& s = state[i];
             if (s.position_.y() + model_.masses()[i].r() > limit)
             {
-                s.velocity_ = double2(0.5 * s.velocity_.x(), -0.9 * abs(s.velocity_.y()));
+                s.velocity_ = double2(0.5 * s.velocity_.x(), -0.7 * abs(s.velocity_.y()));
             }
         }
     }
