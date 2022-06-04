@@ -39,7 +39,7 @@ struct damper_state
 class simulation
 {
 public:
-    simulation(const model_system& model, double xmin, double xmax, double ymin, double ymax, double dt, size_t iterations_per_update) : model_(model), xmin_(xmin), xmax_(xmax), ymin_(ymin), ymax_(ymax), dt_(dt), iterations_per_update_(iterations_per_update) {}
+    simulation(const model_system& model, double xmin, double xmax, double ymin, double ymax, double dt, size_t iterations_per_update, double min_gravitational_mass = 100.0) : model_(model), xmin_(xmin), xmax_(xmax), ymin_(ymin), ymax_(ymax), dt_(dt), iterations_per_update_(iterations_per_update), min_gravitational_mass_(min_gravitational_mass) {}
 
     static size_t add_mass(float m, float r, double2 position, double2 velocity, double2 acceleration, bool fixed, std::vector<mass>& masses, std::vector<mass_state>& state)
     {
@@ -55,9 +55,16 @@ public:
         return springs.size() - 1;
     }
 
-    static size_t add_damper(size_t id_mass1, size_t id_mass2, float k, float l0, const spring& spring, std::vector<damper>& dampers, std::vector<damper_state>& state)
+    static size_t add_damper(size_t id_mass1, size_t id_mass2, const spring& spring, std::vector<damper>& dampers, std::vector<damper_state>& state)
     {
         dampers.emplace_back(id_mass1, id_mass2, spring);
+        state.emplace_back(false);
+        return dampers.size() - 1;
+    }
+
+    static size_t add_damper(size_t id_mass1, size_t id_mass2, float k, float l0, std::vector<damper>& dampers, std::vector<damper_state>& state)
+    {
+        dampers.emplace_back(id_mass1, id_mass2, k, l0);
         state.emplace_back(false);
         return dampers.size() - 1;
     }
@@ -106,24 +113,29 @@ public:
             const auto& m1 = model_.masses()[i];
             const auto& position1 = state[i].position_;
 
-            for (int j = 0; j < count_masses; ++j)
+            for (int j = i + 1; j < count_masses; ++j)
             {
-                if (j == i)
-                    continue;
                 const auto& m2 = model_.masses()[j];
+                if (m1.m() + m2.m() < min_gravitational_mass_)
+                    continue;
+
+
                 const auto& position2 = state[j].position_;
 
                 //Unit vector m1->m2
                 const auto& u = (position2 - position1).unit_vector();
+                //if (u.is_near_zero()) //Don't apply zero distance force
+                  //  continue;
 
                 //Distance m1->m2
                 const auto distance = position1.distance(position2);
 
                 //Calculate scalar gravitational force acting on m1 due to m2 and apply to unit vector
-                const auto scalar_force = distance > constants::minimum_distance ?
-                    (constants::G * m1.m()) * (m2.m() / (distance * distance))
-                    : 0.0f;
+                const auto scalar_force = (constants::G * m1.m()) * (m2.m() / (distance * distance));
                 state[i].force_ += scalar_force * u;
+
+                //m2 has the opposite force
+                state[j].force_ -= scalar_force * u;
             }
         }
     }
@@ -132,7 +144,6 @@ public:
     {
         const auto& count_springs = model_.springs().size();
 
-#pragma omp parallel for
         for (int i = 0; i < count_springs; ++i)
         {
             if (spring_states[i].broken_)
@@ -170,13 +181,12 @@ public:
             const auto& damper = model_.dampers()[i];
             const auto id_mass1 = damper.id_mass1();
             const auto id_mass2 = damper.id_mass2();
-            const auto& A = state[id_mass1].position_;
-            const auto& B = state[id_mass2].position_;
+            const auto& A  = state[id_mass1].position_;
+            const auto& B  = state[id_mass2].position_;
             const auto& vA = state[id_mass1].velocity_;
             const auto& vB = state[id_mass2].velocity_;
 
             const auto damping_force = dot_product(damper.k() * (vA - vB), ((B - A) / (B - A).modulus()));
-
 
             const auto& u = (B - A).unit_vector();
 
@@ -189,16 +199,17 @@ public:
     {
         const auto count_masses = model_.masses().size();
 
-#pragma omp parallel for
         for (int i = 0; i < count_masses; ++i)
         {
+            auto& mass_state = state[i];
+
             const auto& mass = model_.masses()[i];
-            state[i].acceleration_ = state[i].force_ / mass.m();
+            mass_state.acceleration_ = state[i].force_ / mass.m();
             
             if (!state[i].fixed_)
             {
-                state[i].velocity_ += state[i].acceleration_ * dt;
-                state[i].position_ += state[i].velocity_ * dt;
+                mass_state.velocity_ += mass_state.acceleration_ * dt;
+                mass_state.position_ += mass_state.velocity_ * dt;
             }
         }
 
@@ -225,7 +236,6 @@ public:
                 
                 const auto& idist = m1.r() + m2.r();
                 const auto& length2 = (a - b).modulus();
-                printf("");
             }
 
         }
@@ -264,6 +274,7 @@ private:
     double xmax_;
     double ymin_;
     double ymax_;
+    double min_gravitational_mass_; //if the sum of both masses are less than this value, gravitational force not calculated
 
     model_system    model_; //the system being simulated
 };

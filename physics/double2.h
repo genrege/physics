@@ -56,7 +56,8 @@ public:
         const auto mod = modulus();
         if (abs(mod) < std::numeric_limits<float>::epsilon())
             return double2();
-        return double2(x_ / mod, y_ / mod);
+        const auto rmod = 1 / mod;
+        return double2(x_ * rmod, y_ * rmod);
     }
     float distance(const double2& r) const
     {
@@ -64,6 +65,11 @@ public:
         const auto x2 = d.x_ * d.x_;
         const auto y2 = d.y_ * d.y_;
         return sqrt(x2 + y2);
+    }
+
+    bool is_near_zero() const
+    {
+        return abs(x_) < std::numeric_limits<double>::epsilon() && abs(y_) < std::numeric_limits<double>::epsilon();
     }
 
     float x() const { return x_; }

@@ -52,8 +52,8 @@ simulation create_simulation_1()
         mass_states);
 
     simulation::add_mass(
-        constants::earth_mass * 0.6,
-        constants::earth_radius * 0.2,
+        constants::earth_mass * 0.6f,
+        constants::earth_radius * 0.2f,
         { 30.0 * constants::earth_radius, -constants::earth_radius * 48.0 },
         { -900.0, -600.0 },
         {},
@@ -185,22 +185,22 @@ simulation create_simulation_3()
             if (r < rows - 1)
             {
                 const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c, true, (float)rows - r, ydist, springs, spring_states);
-                simulation::add_damper(mass_id, (r + 1) * cols + c, ks, 1, springs[spring_id], dampers, damper_states);
+                simulation::add_damper(mass_id, (r + 1) * cols + c, springs[spring_id], dampers, damper_states);
             }
             if (c < cols - 1)
             {
                 const auto spring_id = simulation::add_spring(mass_id, (r) * cols + c + 1, true, 5, xdist, springs, spring_states);
-                simulation::add_damper(mass_id, (r) * cols + c + 1, ks, 1, springs[spring_id], dampers, damper_states);
+                simulation::add_damper(mass_id, (r) * cols + c + 1, springs[spring_id], dampers, damper_states);
             }
             if (r < rows - 1 && c < cols - 1)
             {
                 const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c + 1, true, (float)rows - r, ddist, springs, spring_states);
-                simulation::add_damper(mass_id, (r + 1) * cols + c + 1, ks, 1, springs[spring_id], dampers, damper_states);
+                simulation::add_damper(mass_id, (r + 1) * cols + c + 1, springs[spring_id], dampers, damper_states);
             }
             if (r > 0 && c < cols - 1)
             {
                 const auto spring_id = simulation::add_spring(mass_id, (r - 1) * cols + c + 1, true, 5, ddist, springs, spring_states);
-                simulation::add_damper(mass_id, (r - 1) * cols + c + 1, ks, 1, springs[spring_id], dampers, damper_states);
+                simulation::add_damper(mass_id, (r - 1) * cols + c + 1, springs[spring_id], dampers, damper_states);
             }
         }
     }
@@ -279,22 +279,22 @@ simulation create_simulation_6()
             if (r < rows - 1)
             {
                 const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c, true, 2, ydist, springs, spring_states);
-                simulation::add_damper(mass_id, (r + 1) * cols + c, ks, 1, springs[spring_id], dampers, damper_states);
+                simulation::add_damper(mass_id, (r + 1) * cols + c, springs[spring_id], dampers, damper_states);
             }
             if (c < cols - 1)
             {
                 const auto spring_id = simulation::add_spring(mass_id, (r)*cols + c + 1, true, 2, xdist, springs, spring_states);
-                simulation::add_damper(mass_id, (r)*cols + c + 1, ks, 1, springs[spring_id], dampers, damper_states);
+                simulation::add_damper(mass_id, (r)*cols + c + 1, springs[spring_id], dampers, damper_states);
             }
             if (r < rows - 1 && c < cols - 1)
             {
                 const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c + 1, true, 2, ddist, springs, spring_states);
-                simulation::add_damper(mass_id, (r + 1) * cols + c + 1, ks, 1, springs[spring_id], dampers, damper_states);
+                simulation::add_damper(mass_id, (r + 1) * cols + c + 1, springs[spring_id], dampers, damper_states);
             }
             if (r > 0 && c < cols - 1)
             {
                 const auto spring_id = simulation::add_spring(mass_id, (r - 1) * cols + c + 1, true, 2, ddist, springs, spring_states);
-                simulation::add_damper(mass_id, (r - 1) * cols + c + 1, ks, 1, springs[spring_id], dampers, damper_states);
+                simulation::add_damper(mass_id, (r - 1) * cols + c + 1, springs[spring_id], dampers, damper_states);
             }
         }
     }
@@ -331,7 +331,7 @@ unsigned __stdcall simulation_thread(void* p)
             sim.update_spatial(mass_states, dt);
             RECT rc;
             GetClientRect(hwnd_client, &rc);
-            sim.update_floor(sim.ymax(), mass_states);
+            sim.update_floor((float)sim.ymax(), mass_states);
             clock += dt;
         }
         LeaveCriticalSection(&cs);
@@ -563,7 +563,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     case WM_SIZE:
     {
-        printf("");
+        
     }
     break;
     case WM_DESTROY:
