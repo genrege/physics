@@ -40,7 +40,27 @@ simulation create_simulation_1()
         false,
         masses, 
         mass_states);
-    
+
+    simulation::add_mass(
+        constants::earth_mass,
+        constants::earth_radius,
+        { -20.0 * constants::earth_radius, constants::earth_radius * 38.0 },
+        {500.0, 300.0},
+        {},
+        false,
+        masses,
+        mass_states);
+
+    simulation::add_mass(
+        constants::earth_mass * 0.6,
+        constants::earth_radius * 0.2,
+        { 30.0 * constants::earth_radius, -constants::earth_radius * 48.0 },
+        { -900.0, -600.0 },
+        {},
+        false,
+        masses,
+        mass_states);
+
     simulation::add_mass(
         constants::lunar_mass, 
         constants::lunar_radius, 
@@ -95,7 +115,7 @@ simulation create_simulation_1()
     
     std::vector<damper> dampers;
 
-    return model_system(masses, springs, dampers);
+    return { model_system(masses, springs, dampers), -300000000, 700000000, -300000000, 700000000, 1, 240 };
 }
 
 simulation create_simulation_2()
@@ -131,7 +151,7 @@ simulation create_simulation_2()
     //simulation::add_damper(m2, m4, 0.1, 700, dampers);
     //simulation::add_damper(m3, m4, 0.1, 700, dampers);
 
-    return model_system(masses, springs, dampers);
+    return { model_system(masses, springs, dampers), -10000, 10000, -10000, 10000, 0.1, 10 };
 }
 
 simulation create_simulation_3()
@@ -140,18 +160,18 @@ simulation create_simulation_3()
     std::vector<spring> springs;
     std::vector<damper> dampers;
 
-    size_t rows = 24;
-    size_t cols = 40;
+    size_t rows = 25;
+    size_t cols = 41;
 
     float xdist = 100;
     float ydist = 100;
     float ddist = sqrt(xdist * xdist + ydist * ydist);
-    float radius = 15;
+    float radius = 25;
     float ks = 10;
 
     for (size_t r = 0; r < rows; ++r)
     {
-        float y = -3000 + (float)r * xdist;
+        float y = -3500 + (float)r * xdist;
         for (size_t c = 0; c < cols; ++c)
         {
             float x = -7000 + (float)c * ydist;
@@ -159,12 +179,12 @@ simulation create_simulation_3()
             const auto fixed = (r < 4 && (c < cols / 4 || c > 3 * cols / 5));
 
             const auto mass_id = r <  rows / 2 ?
-                simulation::add_mass(100., radius, double2{ x, y }, double2{0, 0}, double2{}, fixed, masses, mass_states)
-                : simulation::add_mass(100., radius, double2{ x, y }, double2{0, 0}, double2{}, fixed, masses, mass_states);
+                simulation::add_mass(10., radius, double2{ x, y }, double2{0, 0}, double2{}, fixed, masses, mass_states)
+                : simulation::add_mass(43., radius, double2{ x, y }, double2{0, 0}, double2{}, fixed, masses, mass_states);
 
             if (r < rows - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c, true, rows - r, ydist, springs, spring_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c, true, (float)rows - r, ydist, springs, spring_states);
                 simulation::add_damper(mass_id, (r + 1) * cols + c, ks, 1, springs[spring_id], dampers, damper_states);
             }
             if (c < cols - 1)
@@ -174,7 +194,7 @@ simulation create_simulation_3()
             }
             if (r < rows - 1 && c < cols - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c + 1, true, rows - r, ddist, springs, spring_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c + 1, true, (float)rows - r, ddist, springs, spring_states);
                 simulation::add_damper(mass_id, (r + 1) * cols + c + 1, ks, 1, springs[spring_id], dampers, damper_states);
             }
             if (r > 0 && c < cols - 1)
@@ -186,7 +206,7 @@ simulation create_simulation_3()
     }
     simulation::add_mass(constants::earth_mass * 0.05f, 20.0f, { 0.0f, constants::earth_radius }, { 0.0f, 0.0f }, {}, false, masses, mass_states);
 
-    return model_system(masses, springs, dampers);
+    return { model_system(masses, springs, dampers), -4000, 4000, -4000, 4000, 0.1, 10 };
 }
 
 simulation create_simulation_4()
@@ -195,14 +215,94 @@ simulation create_simulation_4()
     std::vector<spring> springs;
     std::vector<damper> dampers;
 
-    const auto m0 = simulation::add_mass(100, 20, { 200, 100 }, {}, {}, false, masses, mass_states);
-    const auto m1 = simulation::add_mass(100, 20, { 800, 100 }, {}, {}, false, masses, mass_states);
+    const auto m = constants::lunar_mass * 0.25;
+    const auto r = constants::lunar_radius;
 
-    const auto spring_id = simulation::add_spring(m0, m1, true, 10, 400, springs, spring_states);
-    simulation::add_damper(m0, m1, 0.14f, 100, springs[spring_id], dampers, damper_states);
+    for (float x = -15; x < 1; ++x)
+    {
+        for (float y = -15; y < 15; ++y)
+        {
+            simulation::add_mass(m, r, { (x ) * -40 * constants::lunar_radius, (y - 20) * -40 * constants::lunar_radius }, {600 - x * 150, -500 - y * 50}, {}, false, masses, mass_states);
 
-    return model_system(masses, springs, dampers);
+            simulation::add_mass(m, r, { (x ) * 40 * constants::lunar_radius, (y - 20) * 40 * constants::lunar_radius }, { -500 + x * 50,  400 + y * 120 }, {}, false, masses, mass_states);
+        }
+    }
+
+    simulation::add_mass(constants::earth_mass * 5.0f, r * 8, { 0.0f, 0.0f }, { -500.0f, 0.0f }, {}, false, masses, mass_states);
+    simulation::add_mass(constants::earth_mass * 1.f, r * 6, { -constants::earth_radius * 40, constants::earth_radius * 90 }, { 1200.0f, 400.0f }, {}, false, masses, mass_states);
+
+    return { model_system(masses, springs, dampers), -50 * 30 * constants::lunar_radius, 50 * 30 * constants::lunar_radius, -50 * 30 * constants::lunar_radius, 50 * 30 * constants::lunar_radius, 1200, 1 };
 }
+
+simulation create_simulation_5()
+{
+    std::vector<mass> masses;
+    std::vector<spring> springs;
+    std::vector<damper> dampers;
+
+
+    const auto m0 = simulation::add_mass(10, 10, { 500.0, 100.0 }, { 0.0, 0.0 }, { 0.0, 0.0 }, true, masses, mass_states);
+    const auto m1 = simulation::add_mass(10, 10, { 500.0, 800.0 }, { 0.0, 0.0 }, { 0.0, 0.0 }, false, masses, mass_states);
+    simulation::add_spring(m0, m1, true, 100, 800, springs, spring_states);
+
+    return { model_system(masses, springs, dampers),  200, 1000, 200, 1000, 0.001, 10};
+}
+
+simulation create_simulation_6()
+{
+    std::vector<mass> masses;
+    std::vector<spring> springs;
+    std::vector<damper> dampers;
+
+    size_t rows = 16;
+    size_t cols = 16;
+
+    float xdist = 100;
+    float ydist = 100;
+    float ddist = sqrt(xdist * xdist + ydist * ydist);
+    float radius = 12;
+    float ks = 10;
+
+    for (size_t r = 0; r < rows; ++r)
+    {
+        float y = -1600 + (float)r * xdist;
+        for (size_t c = 0; c < cols; ++c)
+        {
+            float x = -2000 + (float)c * ydist;
+
+            const auto fixed = false;
+
+            const auto mass_id = r < rows / 2 ?
+                simulation::add_mass(1., radius, double2{ x, y }, double2{ 7, 0 }, double2{}, fixed, masses, mass_states)
+                : simulation::add_mass(1., radius, double2{ x, y }, double2{ 0, 0 }, double2{}, fixed, masses, mass_states);
+
+            if (r < rows - 1)
+            {
+                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c, true, 2, ydist, springs, spring_states);
+                simulation::add_damper(mass_id, (r + 1) * cols + c, ks, 1, springs[spring_id], dampers, damper_states);
+            }
+            if (c < cols - 1)
+            {
+                const auto spring_id = simulation::add_spring(mass_id, (r)*cols + c + 1, true, 2, xdist, springs, spring_states);
+                simulation::add_damper(mass_id, (r)*cols + c + 1, ks, 1, springs[spring_id], dampers, damper_states);
+            }
+            if (r < rows - 1 && c < cols - 1)
+            {
+                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c + 1, true, 2, ddist, springs, spring_states);
+                simulation::add_damper(mass_id, (r + 1) * cols + c + 1, ks, 1, springs[spring_id], dampers, damper_states);
+            }
+            if (r > 0 && c < cols - 1)
+            {
+                const auto spring_id = simulation::add_spring(mass_id, (r - 1) * cols + c + 1, true, 2, ddist, springs, spring_states);
+                simulation::add_damper(mass_id, (r - 1) * cols + c + 1, ks, 1, springs[spring_id], dampers, damper_states);
+            }
+        }
+    }
+    simulation::add_mass(constants::earth_mass * 0.015f, 20.0f, { 0.0f, constants::earth_radius }, { 0.0f, 0.0f }, {}, false, masses, mass_states);
+
+    return { model_system(masses, springs, dampers), -4000, 5000, -4000, 5000, 0.1, 10 };
+}
+
 
 simulation sim = create_simulation_3();
 
@@ -217,8 +317,8 @@ unsigned __stdcall simulation_thread(void* p)
 {
     while (!exitthread)
     {
-        size_t iterations_per_update = 2;
-        const float dt = 0.5;
+        const auto iterations_per_update = sim.iterations_per_update();
+        const auto dt = (float)sim.dt();
 
         EnterCriticalSection(&cs);
         for (size_t i = 0; i < iterations_per_update; ++i)
@@ -231,7 +331,7 @@ unsigned __stdcall simulation_thread(void* p)
             sim.update_spatial(mass_states, dt);
             RECT rc;
             GetClientRect(hwnd_client, &rc);
-            sim.update_floor((float)rc.bottom * 4 - 20, mass_states);
+            sim.update_floor(sim.ymax(), mass_states);
             clock += dt;
         }
         LeaveCriticalSection(&cs);
@@ -398,11 +498,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             const auto aspect_ratio = float(rc.right - rc.left) / float(rc.bottom - rc.top);
 
-            //this one for gravity sim 
-            //viewport vp(rc, -70000000 * aspect_ratio, 70000000 * aspect_ratio, -70000000.0, 70000000.0);
-
-            //this one for spring system sim
-            viewport vp(rc, -rc.right * 4, rc.right * 4, -rc.bottom * 4, rc.bottom * 4);
+            viewport vp(rc, sim.xmin() * aspect_ratio, sim.xmax() * aspect_ratio, sim.ymin(), sim.ymax());
 
             HDC hmemDC = CreateCompatibleDC(hdc);
             HBITMAP bmp = CreateCompatibleBitmap(hdc, rc.right, rc.bottom);
@@ -416,6 +512,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             EnterCriticalSection(&cs);
             const auto& sim_copy = sim;
+            auto mass_states_copy = mass_states;
             LeaveCriticalSection(&cs);
             for (int i = 0; i < sim_copy.model().springs().size(); ++i)
             {
@@ -424,8 +521,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
                 const auto& spring = sim_copy.model().springs()[i];
-                const auto& p1 = mass_states[spring.id_mass1()].position_;
-                const auto& p2 = mass_states[spring.id_mass2()].position_;
+                const auto& p1 = mass_states_copy[spring.id_mass1()].position_;
+                const auto& p2 = mass_states_copy[spring.id_mass2()].position_;
 
                 const auto x1 = vp.x_to_screen(p1.x());
                 const auto y1 = vp.y_to_screen(p1.y());
@@ -448,6 +545,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                 Ellipse(hmemDC, left, top, right, bottom);
             }
+
+            EnterCriticalSection(&cs);
+            mass_states = mass_states_copy;
+            LeaveCriticalSection(&cs);
 
             BitBlt(hdc, 0, 0, rc.right, rc.bottom, hmemDC, 0, 0, SRCCOPY);
 

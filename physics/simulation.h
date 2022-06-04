@@ -39,7 +39,7 @@ struct damper_state
 class simulation
 {
 public:
-    simulation(const model_system& model) : model_(model) {}
+    simulation(const model_system& model, double xmin, double xmax, double ymin, double ymax, double dt, size_t iterations_per_update) : model_(model), xmin_(xmin), xmax_(xmax), ymin_(ymin), ymax_(ymax), dt_(dt), iterations_per_update_(iterations_per_update) {}
 
     static size_t add_mass(float m, float r, double2 position, double2 velocity, double2 acceleration, bool fixed, std::vector<mass>& masses, std::vector<mass_state>& state)
     {
@@ -121,7 +121,7 @@ public:
 
                 //Calculate scalar gravitational force acting on m1 due to m2 and apply to unit vector
                 const auto scalar_force = distance > constants::minimum_distance ?
-                    constants::G * m1.m() * m2.m() / (distance * distance)
+                    (constants::G * m1.m()) * (m2.m() / (distance * distance))
                     : 0.0f;
                 state[i].force_ += scalar_force * u;
             }
@@ -249,6 +249,22 @@ public:
         return model_;
     }
 
+    double dt() const { return dt_; }
+    size_t iterations_per_update() const { return iterations_per_update_; }
+
+    double xmin() const { return xmin_; }
+    double xmax() const { return xmax_; }
+    double ymin() const { return ymin_; }
+    double ymax() const { return ymax_; }
+
 private:
+    double dt_;
+    size_t iterations_per_update_;
+    double xmin_;
+    double xmax_;
+    double ymin_;
+    double ymax_;
+
     model_system    model_; //the system being simulated
 };
+
