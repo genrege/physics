@@ -213,33 +213,6 @@ public:
             }
         }
 
-        for (const auto& spring : model_.springs())
-        {
-            const auto id_mass1 = spring.id_mass1();
-            const auto id_mass2 = spring.id_mass2();
-
-            const auto& m1 = model_.masses()[id_mass1];
-            const auto& m2 = model_.masses()[id_mass2];
-
-            auto& a = state[id_mass1].position_;
-            auto& b = state[id_mass2].position_;
-
-            const auto& length = (a - b).modulus();
-            if (length < constants::minimum_distance)
-                continue;
-
-            if (length < m1.r() + m2.r()) //collision
-            {
-                const auto u = (a - b).unit_vector();
-                a = a + 0.5 * u;
-                b = b - 0.5 * u;
-                
-                const auto& idist = m1.r() + m2.r();
-                const auto& length2 = (a - b).modulus();
-            }
-
-        }
-
     }
 
     void update_floor(float limit, std::vector<mass_state>& state) const
@@ -249,7 +222,7 @@ public:
             auto& s = state[i];
             if (s.position_.y() + model_.masses()[i].r() > limit)
             {
-                s.velocity_ = double2(0.5f * s.velocity_.x(), -0.7f * fabs(s.velocity_.y()));
+                s.velocity_ = double2(0.5f * s.velocity_.x(), -0.8f * fabs(s.velocity_.y()));
             }
         }
     }

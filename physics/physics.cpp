@@ -160,26 +160,26 @@ simulation create_simulation_3()
     std::vector<spring> springs;
     std::vector<damper> dampers;
 
-    size_t rows = 25;
-    size_t cols = 41;
+    size_t rows = 30;
+    size_t cols = 42;
 
     float xdist = 100;
     float ydist = 100;
     float ddist = sqrt(xdist * xdist + ydist * ydist);
     float radius = 25;
-    float ks = 10;
+    float ks = 3.1f;
 
     for (size_t r = 0; r < rows; ++r)
     {
         float y = -3500 + (float)r * xdist;
         for (size_t c = 0; c < cols; ++c)
         {
-            float x = -7000 + (float)c * ydist;
+            float x = -5000 + (float)c * ydist;
 
-            const auto fixed = (r < 4 && (c < cols / 4 || c > 3 * cols / 5));
+            const auto fixed = (r < 5 && (c < cols / 4 || c > 3 * cols / 4));// || (r == 0 && c == cols / 2);
 
             const auto mass_id = r <  rows / 2 ?
-                simulation::add_mass(10., radius, double2{ x, y }, double2{0, 0}, double2{}, fixed, masses, mass_states)
+                simulation::add_mass(12., radius, double2{ x, y }, double2{0, 0}, double2{}, fixed, masses, mass_states)
                 : simulation::add_mass(43., radius, double2{ x, y }, double2{0, 0}, double2{}, fixed, masses, mass_states);
 
             if (r < rows - 1)
@@ -189,7 +189,7 @@ simulation create_simulation_3()
             }
             if (c < cols - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r) * cols + c + 1, true, 5, xdist, springs, spring_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r) * cols + c + 1, true, ks, xdist, springs, spring_states);
                 simulation::add_damper(mass_id, (r) * cols + c + 1, springs[spring_id], dampers, damper_states);
             }
             if (r < rows - 1 && c < cols - 1)
@@ -199,7 +199,7 @@ simulation create_simulation_3()
             }
             if (r > 0 && c < cols - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r - 1) * cols + c + 1, true, 5, ddist, springs, spring_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r - 1) * cols + c + 1, true, ks, ddist, springs, spring_states);
                 simulation::add_damper(mass_id, (r - 1) * cols + c + 1, springs[spring_id], dampers, damper_states);
             }
         }
@@ -254,8 +254,8 @@ simulation create_simulation_6()
     std::vector<spring> springs;
     std::vector<damper> dampers;
 
-    size_t rows = 16;
-    size_t cols = 16;
+    size_t rows = 6;
+    size_t cols = 22;
 
     float xdist = 100;
     float ydist = 100;
@@ -268,39 +268,39 @@ simulation create_simulation_6()
         float y = -1600 + (float)r * xdist;
         for (size_t c = 0; c < cols; ++c)
         {
-            float x = -2000 + (float)c * ydist;
+            float x = -3500 + (float)c * ydist;
 
             const auto fixed = false;
 
             const auto mass_id = r < rows / 2 ?
-                simulation::add_mass(1., radius, double2{ x, y }, double2{ 7, 0 }, double2{}, fixed, masses, mass_states)
-                : simulation::add_mass(1., radius, double2{ x, y }, double2{ 0, 0 }, double2{}, fixed, masses, mass_states);
+                simulation::add_mass(1., radius, double2{ x, y }, double2{ 3, 0 }, double2{}, fixed, masses, mass_states)
+                : simulation::add_mass(1., radius, double2{ x, y }, double2{ -3, 0 }, double2{}, fixed, masses, mass_states);
 
             if (r < rows - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c, true, 2, ydist, springs, spring_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c, true, 1, ydist, springs, spring_states);
                 simulation::add_damper(mass_id, (r + 1) * cols + c, springs[spring_id], dampers, damper_states);
             }
             if (c < cols - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r)*cols + c + 1, true, 2, xdist, springs, spring_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r)*cols + c + 1, true, 1, xdist, springs, spring_states);
                 simulation::add_damper(mass_id, (r)*cols + c + 1, springs[spring_id], dampers, damper_states);
             }
             if (r < rows - 1 && c < cols - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c + 1, true, 2, ddist, springs, spring_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c + 1, true, 1, ddist, springs, spring_states);
                 simulation::add_damper(mass_id, (r + 1) * cols + c + 1, springs[spring_id], dampers, damper_states);
             }
             if (r > 0 && c < cols - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r - 1) * cols + c + 1, true, 2, ddist, springs, spring_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r - 1) * cols + c + 1, true, 1, ddist, springs, spring_states);
                 simulation::add_damper(mass_id, (r - 1) * cols + c + 1, springs[spring_id], dampers, damper_states);
             }
         }
     }
-    simulation::add_mass(constants::earth_mass * 0.015f, 20.0f, { 0.0f, constants::earth_radius }, { 0.0f, 0.0f }, {}, false, masses, mass_states);
+    simulation::add_mass(constants::earth_mass * 0.001f, 20.0f, { 0.0f, constants::earth_radius }, { 0.0f, 0.0f }, {}, false, masses, mass_states);
 
-    return { model_system(masses, springs, dampers), -4000, 5000, -4000, 5000, 0.1, 10 };
+    return { model_system(masses, springs, dampers), -4000, 3000, -2000, 5000, 0.1, 10 };
 }
 
 
@@ -507,8 +507,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             auto pen = CreatePen(0, 1, RGB(0, 255, 0));
             SelectObject(hmemDC, pen);
 
-            auto brush = CreateSolidBrush(RGB(255, 0, 0));
-            SelectObject(hmemDC, brush);
+            auto red_brush = CreateSolidBrush(RGB(255, 0, 0));
+            auto blue_brush = CreateSolidBrush(RGB(0, 0, 255));
+            SelectObject(hmemDC, blue_brush);
 
             EnterCriticalSection(&cs);
             const auto& sim_copy = sim;
@@ -543,7 +544,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 const auto right = vp.x_to_screen(position.x()  + m.r()) + 1;
                 const auto bottom = vp.y_to_screen(position.y() + m.r()) + 1;
 
-                Ellipse(hmemDC, left, top, right, bottom);
+                if (mass_states_copy[i].fixed_)
+                {
+                    SelectObject(hmemDC, blue_brush);
+                }
+                else 
+                {
+                    SelectObject(hmemDC, red_brush);
+                }
+
+                if (mass_states_copy[i].fixed_)
+                {
+                    Rectangle(hmemDC, left, top, right, bottom);
+                }
+                else
+                {
+                    Ellipse(hmemDC, left, top, right, bottom);
+                }
             }
 
             EnterCriticalSection(&cs);
@@ -552,7 +569,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             BitBlt(hdc, 0, 0, rc.right, rc.bottom, hmemDC, 0, 0, SRCCOPY);
 
-            DeleteObject(brush);
+            DeleteObject(red_brush);
+            DeleteObject(blue_brush);
             DeleteObject(pen);
 
             DeleteObject(bmp);
