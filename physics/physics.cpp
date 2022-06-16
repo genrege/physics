@@ -141,17 +141,16 @@ simulation create_simulation_2()
     simulation::add_spring(m2, m4, true, 10, 75,  springs, spring_states);
     simulation::add_spring(m3, m4, true, 10, 75,  springs, spring_states);
 
-    //simulation::add_damper(m0, m1, 0.6, 700, dampers);
-    //simulation::add_damper(m0, m2, 0.6, 700, dampers);
-    //simulation::add_damper(m1, m3, 0.6, 700, dampers);
-    //simulation::add_damper(m2, m3, 0.6, 700, dampers);
-    
-    //simulation::add_damper(m0, m4, 0.1, 700, dampers);
-    //simulation::add_damper(m1, m4, 0.1, 700, dampers);
-    //simulation::add_damper(m2, m4, 0.1, 700, dampers);
-    //simulation::add_damper(m3, m4, 0.1, 700, dampers);
+    simulation::add_damper(m0, m1, 0.6, 700, dampers, damper_states);
+    simulation::add_damper(m0, m2, 0.6, 700, dampers, damper_states);
+    simulation::add_damper(m1, m3, 0.6, 700, dampers, damper_states);
+    simulation::add_damper(m2, m3, 0.6, 700, dampers, damper_states);
+    simulation::add_damper(m0, m4, 0.1, 700, dampers, damper_states);
+    simulation::add_damper(m1, m4, 0.1, 700, dampers, damper_states);
+    simulation::add_damper(m2, m4, 0.1, 700, dampers, damper_states);
+    simulation::add_damper(m3, m4, 0.1, 700, dampers, damper_states);
 
-    return { model_system(masses, springs, dampers), -10000, 10000, -10000, 10000, 0.1, 10 };
+    return { model_system(masses, springs, dampers), -4000, 4000, -4000, 4000, 0.1, 10 };
 }
 
 simulation create_simulation_3()
@@ -180,7 +179,7 @@ simulation create_simulation_3()
 
             const auto mass_id = r <  rows / 2 ?
                 simulation::add_mass(12., radius, double2{ x, y }, double2{0, 0}, double2{}, fixed, masses, mass_states)
-                : simulation::add_mass(43., radius, double2{ x, y }, double2{0, 0}, double2{}, fixed, masses, mass_states);
+                : simulation::add_mass(34., radius, double2{ x, y }, double2{0, 0}, double2{}, fixed, masses, mass_states);
 
             if (r < rows - 1)
             {
@@ -204,9 +203,14 @@ simulation create_simulation_3()
             }
         }
     }
-    simulation::add_mass(constants::earth_mass * 0.05f, 20.0f, { 0.0f, constants::earth_radius }, { 0.0f, 0.0f }, {}, false, masses, mass_states);
+    simulation::add_mass(constants::earth_mass * 0.0525f, 20.0f, { 0.0f, constants::earth_radius }, { 0.0f, 0.0f }, {}, false, masses, mass_states);
 
-    return { model_system(masses, springs, dampers), -4000, 4000, -4000, 4000, 0.1, 10 };
+    simulation::add_mass(20,  3 * radius, { 3800, 3800   }, { -42.0f, -68.0f }, {}, false, masses, mass_states);
+    simulation::add_mass(580, 3 * radius, { 4500, -1800  }, { -80.0f, -12.0f }, {}, false, masses, mass_states);
+    simulation::add_mass(250,  3 * radius, { 5100, 3800   }, { -90.0f, -100.0f }, {}, false, masses, mass_states);
+    simulation::add_mass(650, 3 * radius, { -7200, 3800  }, { 32.0f, -72.0f }, {}, false, masses, mass_states);
+
+    return { model_system(masses, springs, dampers), -5000, 5000, -5000, 5000, 0.05, 10 };
 }
 
 simulation create_simulation_4()
@@ -215,7 +219,7 @@ simulation create_simulation_4()
     std::vector<spring> springs;
     std::vector<damper> dampers;
 
-    const auto m = constants::lunar_mass * 0.25;
+    const auto m = constants::lunar_mass * 1.45;
     const auto r = constants::lunar_radius;
 
     for (float x = -15; x < 1; ++x)
@@ -228,8 +232,9 @@ simulation create_simulation_4()
         }
     }
 
-    simulation::add_mass(constants::earth_mass * 5.0f, r * 8, { 0.0f, 0.0f }, { -500.0f, 0.0f }, {}, false, masses, mass_states);
-    simulation::add_mass(constants::earth_mass * 1.f, r * 6, { -constants::earth_radius * 40, constants::earth_radius * 90 }, { 1200.0f, 400.0f }, {}, false, masses, mass_states);
+    simulation::add_mass(constants::earth_mass * 6.0f, r * 8, { -30.0f * 30 * constants::lunar_radius, 30 * 30 * constants::lunar_radius}, { -1600.0f, 0.0f }, {}, false, masses, mass_states);
+    simulation::add_mass(constants::earth_mass * 6.0f, r * 8, { 0.0f, 0.0f }, { -500.0f, 0.0f }, {}, false, masses, mass_states);
+    simulation::add_mass(constants::earth_mass * 2.f, r * 6, { -constants::earth_radius * 40, constants::earth_radius * 90 }, { 1200.0f, 400.0f }, {}, false, masses, mass_states);
 
     return { model_system(masses, springs, dampers), -50 * 30 * constants::lunar_radius, 50 * 30 * constants::lunar_radius, -50 * 30 * constants::lunar_radius, 50 * 30 * constants::lunar_radius, 1200, 1 };
 }
@@ -240,12 +245,15 @@ simulation create_simulation_5()
     std::vector<spring> springs;
     std::vector<damper> dampers;
 
+    simulation::add_mass(10, 60, 0.99, { -1000.0, 0.0 }, { 5.0, 0.0 }, { 0.0, 0.0 }, false, masses, mass_states);
+    simulation::add_mass(10, 60, 0.99, { 0.0, 0.0 }, { 1.0, 0.0 }, { 0.0, 0.0 }, false, masses, mass_states);
+    simulation::add_mass(10, 60, 0.99, { 800.0, 0.0 }, { 0.0, 0.0 }, { 0.0, 0.0 }, false, masses, mass_states);
+    simulation::add_mass(10, 60, 0.99, { 950.0, 0.0 }, { 0.0, 0.0 }, { 0.0, 0.0 }, false, masses, mass_states);
+    simulation::add_mass(10, 60, 0.99, { 1200.0, -10.0 }, { 0.0, 0.0 }, { 0.0, 0.0 }, false, masses, mass_states);
+    simulation::add_mass(10, 60, 0.99, { 1300.0, 10.0 }, { 0.0, 0.0 }, { 0.0, 0.0 }, false, masses, mass_states);
+    simulation::add_mass(10, 60, 0.99, { 1500.0, 0.0 }, { 0.0, 0.0 }, { 0.0, 0.0 }, false, masses, mass_states);
 
-    const auto m0 = simulation::add_mass(10, 10, { 500.0, 100.0 }, { 0.0, 0.0 }, { 0.0, 0.0 }, true, masses, mass_states);
-    const auto m1 = simulation::add_mass(10, 10, { 500.0, 800.0 }, { 0.0, 0.0 }, { 0.0, 0.0 }, false, masses, mass_states);
-    simulation::add_spring(m0, m1, true, 100, 800, springs, spring_states);
-
-    return { model_system(masses, springs, dampers),  200, 1000, 200, 1000, 0.001, 10};
+    return { model_system(masses, springs, dampers), -1000, 1000, -1000, 1000, 0.1, 10};
 }
 
 simulation create_simulation_6()
@@ -254,14 +262,13 @@ simulation create_simulation_6()
     std::vector<spring> springs;
     std::vector<damper> dampers;
 
-    size_t rows = 6;
-    size_t cols = 22;
+    size_t rows = 9;
+    size_t cols = 30;
 
     float xdist = 100;
     float ydist = 100;
     float ddist = sqrt(xdist * xdist + ydist * ydist);
-    float radius = 12;
-    float ks = 10;
+    float radius = 30;
 
     for (size_t r = 0; r < rows; ++r)
     {
@@ -273,8 +280,8 @@ simulation create_simulation_6()
             const auto fixed = false;
 
             const auto mass_id = r < rows / 2 ?
-                simulation::add_mass(1., radius, double2{ x, y }, double2{ 3, 0 }, double2{}, fixed, masses, mass_states)
-                : simulation::add_mass(1., radius, double2{ x, y }, double2{ -3, 0 }, double2{}, fixed, masses, mass_states);
+                simulation::add_mass(1., radius, double2{ x, y }, double2{ 7, 0 }, double2{}, fixed, masses, mass_states)
+                : simulation::add_mass(0.8, radius, double2{ x, y }, double2{ -5, 0 }, double2{}, fixed, masses, mass_states);
 
             if (r < rows - 1)
             {
@@ -298,13 +305,90 @@ simulation create_simulation_6()
             }
         }
     }
-    simulation::add_mass(constants::earth_mass * 0.001f, 20.0f, { 0.0f, constants::earth_radius }, { 0.0f, 0.0f }, {}, false, masses, mass_states);
+
+    simulation::add_mass(constants::earth_mass * 0.002f, 20.0f, { 0.0f, constants::earth_radius }, { 0.0f, 0.0f }, {}, false, masses, mass_states);
+
+    for (int i = 1; i < 14; ++i)
+    {
+        const auto id_mass = simulation::add_mass(1.0f + 2 * i, 20 + 3.0f * i, {-1500.0f -i * 100.0f, -2500 - i * 35.0f}, {0, -5.0f}, {}, false, masses, mass_states);
+        if (i > 1)
+        {
+            const auto id_spring = simulation::add_spring(id_mass - 1, id_mass, true, 1.0, 140.0f, springs, spring_states);
+            simulation::add_damper(id_mass - 1, id_mass, springs[id_spring], dampers, damper_states);
+        }
+        
+    }
+
+    for (int i = 1; i < 14; ++i)
+    {
+        simulation::add_mass(1.0f + 10 * i, 10 + 4.0f * i, { -1500.0f - i * 100.0f, -3500 - i * 35.0f }, { 0, -5.0f }, {}, false, masses, mass_states);
+    }
 
     return { model_system(masses, springs, dampers), -4000, 3000, -2000, 5000, 0.1, 10 };
 }
 
+simulation create_simulation_7()
+{
+    std::vector<mass> masses;
+    std::vector<spring> springs;
+    std::vector<damper> dampers;
 
-simulation sim = create_simulation_3();
+    size_t rows = 22;
+    size_t cols = 22;
+
+    float xdist = 100;
+    float ydist = 100;
+    float radius = 25;
+
+    for (size_t r = 0; r < rows; ++r)
+    {
+        float y = -1600 + (float)r * xdist;
+        for (size_t c = 0; c < cols; ++c)
+        {
+            float x = -3500 + (float)c * ydist;
+
+            const auto fixed = false;
+
+            simulation::add_mass(1., radius, 0.99, double2{ x, y }, double2{ 3.0f - r % 2, 0 }, double2{}, fixed, masses, mass_states);
+        }
+    }
+    simulation::add_mass(constants::earth_mass * 0.01f, 20.0f, { 0.0f, constants::earth_radius }, { 0.0f, 0.0f }, {}, false, masses, mass_states);
+
+    return { model_system(masses, springs, dampers), -4000, 3000, -2000, 5000, 0.1, 10 };
+}
+
+simulation create_simulation_8()
+{
+    std::vector<mass> masses;
+    std::vector<spring> springs;
+    std::vector<damper> dampers;
+
+    for (int i = 0; i < 25; ++i)
+    {
+
+        if (i > 6 && i < 16)
+            continue;
+
+        const auto id_ball   = simulation::add_mass(0.5, 0.025, 0.995, { i * 0.05f, 0.4f }, { i == 0 ? -1.5f : 0, 0 }, {}, false, masses, mass_states);
+        const auto id_anchor = simulation::add_mass(0.5, 0.01,  { i * 0.05f, 0.0f }, { 0, 0 }, {}, true, masses, mass_states);
+
+        const auto id_spring = simulation::add_spring(id_ball, id_anchor, true, 1500.0, 0.4f, springs, spring_states);
+        simulation::add_damper(id_ball, id_anchor, i < 7 ? 100.0 : 10.0, 0.4f, dampers, damper_states);
+
+        if (i > 6)
+        {
+            const auto id_ball2 = simulation::add_mass(0.3, 0.02, 0.995, { i * 0.05f, 0.8f }, { i == 24 ? 2.5f : 0, 0 }, {}, false, masses, mass_states);
+            const auto id_spring = simulation::add_spring(id_ball, id_ball2 , true, 1500.0, 0.4f, springs, spring_states);
+            simulation::add_damper(id_ball, id_anchor, i < 7 ? 100.0 : 10.0, 0.4f, dampers, damper_states);
+        }
+    }
+    
+    simulation::add_mass(constants::earth_mass * 1.0f, 20.0f, { 0.0f, constants::earth_radius }, { 0.0f, 0.0f }, {}, false, masses, mass_states);
+
+    return { model_system(masses, springs, dampers), -0.2, 1, -0.2, 1, 0.00002, 100};
+}
+
+simulation sim = create_simulation_8();
 
 float clock = 0.0;
 HWND hwnd_client = 0;
@@ -317,6 +401,9 @@ unsigned __stdcall simulation_thread(void* p)
 {
     while (!exitthread)
     {
+        RECT rc;
+        GetClientRect(hwnd_client, &rc);
+
         const auto iterations_per_update = sim.iterations_per_update();
         const auto dt = (float)sim.dt();
 
@@ -329,14 +416,15 @@ unsigned __stdcall simulation_thread(void* p)
             sim.update_spring_force(mass_states, spring_states);
             sim.update_damper_force(mass_states, damper_states);
             sim.update_spatial(mass_states, dt);
-            RECT rc;
-            GetClientRect(hwnd_client, &rc);
-            sim.update_floor((float)sim.ymax(), mass_states);
+            sim.update_collisions(mass_states);
+            sim.update_floor(mass_states);
             clock += dt;
         }
         LeaveCriticalSection(&cs);
         Sleep(0);
-        if (!exitthread)
+        if (exitthread)
+            ExitThread(0);
+        else
             SendMessage(hwnd_client, WM_USER + 1, 0, 0);
     }
     return 0;
@@ -456,9 +544,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message)
     {
     case WM_CLOSE:
-        exitthread = true;
-        WaitForSingleObject(hthread, INFINITE);
-        DestroyWindow(hWnd);
+        TerminateProcess(GetCurrentProcess(), 0);
         break;
     case WM_COMMAND:
         {
@@ -470,10 +556,87 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
             case IDM_EXIT:
+                TerminateProcess(GetCurrentProcess(), 0);
+                break;
+            case ID_SIMULATION1:
                 exitthread = true;
                 WaitForSingleObject(hthread, INFINITE);
-               
-                DestroyWindow(hWnd);
+                mass_states.clear();
+                spring_states.clear();
+                damper_states.clear();
+                sim = create_simulation_1();
+                exitthread = false;
+                hthread = (HANDLE)_beginthreadex(NULL, 0, &simulation_thread, NULL, 0, &threadid);
+                break;
+            case ID_SIMULATION2:
+                exitthread = true;
+                WaitForSingleObject(hthread, INFINITE);
+                mass_states.clear();
+                spring_states.clear();
+                damper_states.clear();
+                sim = create_simulation_2();
+                exitthread = false;
+                hthread = (HANDLE)_beginthreadex(NULL, 0, &simulation_thread, NULL, 0, &threadid);
+                break;
+            case ID_SIMULATION3:
+                exitthread = true;
+                WaitForSingleObject(hthread, INFINITE);
+                mass_states.clear();
+                spring_states.clear();
+                damper_states.clear();
+                sim = create_simulation_3();
+                exitthread = false;
+                hthread = (HANDLE)_beginthreadex(NULL, 0, &simulation_thread, NULL, 0, &threadid);
+                break;
+            case ID_SIMULATION4:
+                exitthread = true;
+                WaitForSingleObject(hthread, INFINITE);
+                mass_states.clear();
+                spring_states.clear();
+                damper_states.clear();
+                sim = create_simulation_4();
+                exitthread = false;
+                hthread = (HANDLE)_beginthreadex(NULL, 0, &simulation_thread, NULL, 0, &threadid);
+                break;
+            case ID_SIMULATION5:
+                exitthread = true;
+                WaitForSingleObject(hthread, INFINITE);
+                mass_states.clear();
+                spring_states.clear();
+                damper_states.clear();
+                sim = create_simulation_5();
+                exitthread = false;
+                hthread = (HANDLE)_beginthreadex(NULL, 0, &simulation_thread, NULL, 0, &threadid);
+                break;
+            case ID_SIMULATION6:
+                exitthread = true;
+                WaitForSingleObject(hthread, INFINITE);
+                mass_states.clear();
+                spring_states.clear();
+                damper_states.clear();
+                sim = create_simulation_6();
+                exitthread = false;
+                hthread = (HANDLE)_beginthreadex(NULL, 0, &simulation_thread, NULL, 0, &threadid);
+                break;
+            case ID_SIMULATION7:
+                exitthread = true;
+                WaitForSingleObject(hthread, INFINITE);
+                mass_states.clear();
+                spring_states.clear();
+                damper_states.clear();
+                sim = create_simulation_7();
+                exitthread = false;
+                hthread = (HANDLE)_beginthreadex(NULL, 0, &simulation_thread, NULL, 0, &threadid);
+                break;
+            case ID_SIMULATION8:
+                exitthread = true;
+                WaitForSingleObject(hthread, INFINITE);
+                mass_states.clear();
+                spring_states.clear();
+                damper_states.clear();
+                sim = create_simulation_8();
+                exitthread = false;
+                hthread = (HANDLE)_beginthreadex(NULL, 0, &simulation_thread, NULL, 0, &threadid);
                 break;
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);

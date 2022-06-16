@@ -48,6 +48,13 @@ public:
         return masses.size() - 1;
     }
 
+    static size_t add_mass(float m, float r, float e, double2 position, double2 velocity, double2 acceleration, bool fixed, std::vector<mass>& masses, std::vector<mass_state>& state)
+    {
+        masses.emplace_back(m, r, e);
+        state.emplace_back(position, double2{}, velocity, acceleration, 0.0f, 0.0f, fixed);
+        return masses.size() - 1;
+    }
+
     static size_t add_spring(size_t id_mass1, size_t id_mass2, bool working, float k, float l0, std::vector<spring>& springs, std::vector<spring_state>& state)
     {
         springs.emplace_back(id_mass1, id_mass2, k, l0);
@@ -212,17 +219,61 @@ public:
                 mass_state.position_ += mass_state.velocity_ * dt;
             }
         }
-
     }
 
-    void update_floor(float limit, std::vector<mass_state>& state) const
+    void update_floor(std::vector<mass_state>& state) const
     {
         for (int i = 0; i < state.size(); ++i)
         {
             auto& s = state[i];
-            if (s.position_.y() + model_.masses()[i].r() > limit)
+            if (s.position_.y() + model_.masses()[i].r() > ymax())
             {
-                s.velocity_ = double2(0.5f * s.velocity_.x(), -0.8f * fabs(s.velocity_.y()));
+                s.velocity_ = double2(0.8 * s.velocity_.x(), -0.98f * fabs(s.velocity_.y()));
+            }
+        }
+    }
+
+    void update_collisions(std::vector<mass_state>& state)
+    {
+        for (int i = 0; i < state.size(); ++i)
+        {
+            auto& state1 = state[i];
+            const auto& mass1 = model_.masses()[i];
+            const auto& x1 = state1.position_;
+            for (int j = i + 1; j < state.size(); ++j)
+            {
+                auto& state2 = state[j];
+                const auto& mass2 = model_.masses()[j];
+                const auto& x2 = state2.position_;
+
+                const auto& x_diff = x2 - x1;
+                const auto distance = x_diff.modulus();
+
+                if (distance > mass1.r() + mass2.r())
+                    continue;
+
+                const auto& u = (x2 - x1).unit_vector();
+                const auto e = (distance - mass1.r() - mass2.r());
+                const auto& du = 0.5 * e * u;
+                state[i].position_ += du;
+                state[j].position_ -= du;
+                const auto ideal_distance = mass1.r() + mass2.r();
+
+                const auto ideal_distance_squared = ideal_distance * ideal_distance;
+                const auto m1 = mass1.m();
+                const auto m2 = mass2.m();
+
+                const auto elastic_coeff = mass1.e() * mass2.e();
+
+                const auto M = m1 + m2;
+                const auto& v1 = state1.velocity_;
+                const auto& v2 = state2.velocity_;
+
+                const auto& v1n = v1 - 2.0f * elastic_coeff * (m2 / M) * dot_product(v1 - v2, x1 - x2) * (x1 - x2) / ideal_distance_squared;
+                const auto& v2n = v2 - 2.0f * elastic_coeff * (m1 / M) * dot_product(v2 - v1, x2 - x1) * (x2 - x1) / ideal_distance_squared;
+
+                state[i].velocity_ = v1n;
+                state[j].velocity_ = v2n;
             }
         }
     }
