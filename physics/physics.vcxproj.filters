@@ -57,10 +57,19 @@
     <ClInclude Include="coordinate_translation.h">
       <Filter>graphics</Filter>
     </ClInclude>
+    <ClInclude Include="simulation_examples.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="physics.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="simulation_examples.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="double2.cpp">
+      <Filter>physics</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

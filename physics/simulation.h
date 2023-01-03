@@ -7,7 +7,7 @@
 struct mass_state
 {
     mass_state() = default;
-    mass_state(const double2& position, const double2& force, const double2& velocity, const double2& acceleration, float angular_velocity, float angular_position, bool fixed)
+    mass_state(const double2& position, const double2& force, const double2& velocity, const double2& acceleration, double angular_velocity, double angular_position, bool fixed)
         : position_(position), force_(force), velocity_(velocity), acceleration_(acceleration), angular_velocity_(angular_velocity), angular_position_(angular_position), fixed_(fixed)
     {}
 
@@ -16,8 +16,8 @@ struct mass_state
     double2 velocity_;
     double2 acceleration_;
     
-    float  angular_velocity_;
-    float  angular_position_;
+    double  angular_velocity_;
+    double  angular_position_;
 
     bool fixed_;    //if true doesn't move
 };
@@ -39,23 +39,23 @@ struct damper_state
 class simulation
 {
 public:
-    simulation(const model_system& model, double xmin, double xmax, double ymin, double ymax, double dt, size_t iterations_per_update, double min_gravitational_mass = 100.0) : model_(model), xmin_(xmin), xmax_(xmax), ymin_(ymin), ymax_(ymax), dt_(dt), iterations_per_update_(iterations_per_update), min_gravitational_mass_(min_gravitational_mass) {}
+    simulation(const model_system& model, double xmin, double xmax, double ymin, double ymax, double dt, size_t iterations_per_update, double min_gravitational_mass = 10000.0) : model_(model), xmin_(xmin), xmax_(xmax), ymin_(ymin), ymax_(ymax), dt_(dt), iterations_per_update_(iterations_per_update), min_gravitational_mass_(min_gravitational_mass) {}
 
-    static size_t add_mass(float m, float r, double2 position, double2 velocity, double2 acceleration, bool fixed, std::vector<mass>& masses, std::vector<mass_state>& state)
+    static size_t add_mass(double m, double r, double2 position, double2 velocity, double2 acceleration, bool fixed, std::vector<mass>& masses, std::vector<mass_state>& state)
     {
         masses.emplace_back(m, r);
         state.emplace_back(position, double2{}, velocity, acceleration, 0.0f, 0.0f, fixed);
         return masses.size() - 1;
     }
 
-    static size_t add_mass(float m, float r, float e, double2 position, double2 velocity, double2 acceleration, bool fixed, std::vector<mass>& masses, std::vector<mass_state>& state)
+    static size_t add_mass(double m, double r, double e, double2 position, double2 velocity, double2 acceleration, bool fixed, std::vector<mass>& masses, std::vector<mass_state>& state)
     {
         masses.emplace_back(m, r, e);
         state.emplace_back(position, double2{}, velocity, acceleration, 0.0f, 0.0f, fixed);
         return masses.size() - 1;
     }
 
-    static size_t add_spring(size_t id_mass1, size_t id_mass2, bool working, float k, float l0, std::vector<spring>& springs, std::vector<spring_state>& state)
+    static size_t add_spring(size_t id_mass1, size_t id_mass2, bool working, double k, double l0, std::vector<spring>& springs, std::vector<spring_state>& state)
     {
         springs.emplace_back(id_mass1, id_mass2, k, l0);
         state.emplace_back(false);
@@ -69,7 +69,7 @@ public:
         return dampers.size() - 1;
     }
 
-    static size_t add_damper(size_t id_mass1, size_t id_mass2, float k, float l0, std::vector<damper>& dampers, std::vector<damper_state>& state)
+    static size_t add_damper(size_t id_mass1, size_t id_mass2, double k, double l0, std::vector<damper>& dampers, std::vector<damper_state>& state)
     {
         dampers.emplace_back(id_mass1, id_mass2, k, l0);
         state.emplace_back(false);
@@ -139,10 +139,11 @@ public:
 
                 //Calculate scalar gravitational force acting on m1 due to m2 and apply to unit vector
                 const auto scalar_force = (constants::G * m1.m()) * (m2.m() / (distance * distance));
-                state[i].force_ += scalar_force * u;
+                const auto sfu = scalar_force * u;
+                state[i].force_ += sfu;
 
                 //m2 has the opposite force
-                state[j].force_ -= scalar_force * u;
+                state[j].force_ -= sfu;
             }
         }
     }
@@ -165,9 +166,8 @@ public:
 
             const auto& velocity1 = state[id_mass1].velocity_;
             const auto& velocity2 = state[id_mass2].velocity_;
-            const auto speed = velocity1.distance(velocity2);
 
-            const auto scalar_force = spring.force(length, speed);
+            const auto scalar_force = spring.force(length);
 
             const auto& u = (position2 - position1).unit_vector();
 
@@ -202,7 +202,7 @@ public:
         }
     }
 
-    void update_spatial(std::vector<mass_state>& state, float dt) const
+    void update_spatial(std::vector<mass_state>& state, double dt) const
     {
         const auto count_masses = model_.masses().size();
 
@@ -228,52 +228,58 @@ public:
             auto& s = state[i];
             if (s.position_.y() + model_.masses()[i].r() > ymax())
             {
-                s.velocity_ = double2(0.8 * s.velocity_.x(), -0.98f * fabs(s.velocity_.y()));
+                s.velocity_ = double2(0.8 * s.velocity_.x(), -0.92f * fabs(s.velocity_.y()));
             }
         }
     }
 
     void update_collisions(std::vector<mass_state>& state)
     {
+        const auto& masses = model_.masses();
         for (int i = 0; i < state.size(); ++i)
         {
-            auto& state1 = state[i];
-            const auto& mass1 = model_.masses()[i];
-            const auto& x1 = state1.position_;
+            auto& state1      = state[i];
+            const auto& mass1 = masses[i];
+            const auto& p1    = state1.position_;
+
             for (int j = i + 1; j < state.size(); ++j)
             {
-                auto& state2 = state[j];
-                const auto& mass2 = model_.masses()[j];
-                const auto& x2 = state2.position_;
+                auto& state2   = state[j];
+                const auto& p2 = state2.position_;
 
-                const auto& x_diff = x2 - x1;
-                const auto distance = x_diff.modulus();
+                const auto& p_diff = p2 - p1;
 
-                if (distance > mass1.r() + mass2.r())
+                if (abs(p_diff.x()) < 1.0E-12 && abs(p_diff.y()) < 1.0E-12)
                     continue;
 
-                const auto& u = (x2 - x1).unit_vector();
-                const auto e = (distance - mass1.r() - mass2.r());
-                const auto& du = 0.5 * e * u;
-                state[i].position_ += du;
-                state[j].position_ -= du;
-                const auto ideal_distance = mass1.r() + mass2.r();
+                const auto& mass2 = masses[j];
+                if (p_diff.sum_squares() > (mass1.r() + mass1.r()) * (mass2.r() + mass2.r()))
+                    continue;
 
-                const auto ideal_distance_squared = ideal_distance * ideal_distance;
                 const auto m1 = mass1.m();
                 const auto m2 = mass2.m();
+                const auto M  = m1 + m2;
+
+                const auto distance = p_diff.modulus();
+
+                const auto e = (distance - mass1.r() - mass2.r());
+
+                const auto& u  = p_diff.unit_vector();
+                const auto& du = e * u;
+
+                const auto dr    =  m2 / M;
+                state1.position_ += dr * du;
+                state2.position_ -= (1 - dr) * du;
 
                 const auto elastic_coeff = mass1.e() * mass2.e();
+                const auto ideal_distance = mass1.r() + mass2.r();
+                const auto ideal_distance_squared = ideal_distance * ideal_distance;
 
-                const auto M = m1 + m2;
-                const auto& v1 = state1.velocity_;
-                const auto& v2 = state2.velocity_;
+                const auto v1  = state1.velocity_;
+                const auto v2  = state2.velocity_;
 
-                const auto& v1n = v1 - 2.0f * elastic_coeff * (m2 / M) * dot_product(v1 - v2, x1 - x2) * (x1 - x2) / ideal_distance_squared;
-                const auto& v2n = v2 - 2.0f * elastic_coeff * (m1 / M) * dot_product(v2 - v1, x2 - x1) * (x2 - x1) / ideal_distance_squared;
-
-                state[i].velocity_ = v1n;
-                state[j].velocity_ = v2n;
+                state1.velocity_ = v1 - 2.0 * elastic_coeff * (m2 / M) * dot_product(v1 - v2, p1 - p2) * (p1 - p2) / ideal_distance_squared;
+                state2.velocity_ = v2 - 2.0 * elastic_coeff * (m1 / M) * dot_product(v2 - v1, p2 - p1) * (p2 - p1) / ideal_distance_squared;
             }
         }
     }

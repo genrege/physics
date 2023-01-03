@@ -6,27 +6,27 @@
 class mass
 {
 public:
-    mass(float m, float r, float e = 1.0f) : m_(m), r_(r), e_(e)
+    mass(double m, double r, double e = 1.0f) : m_(m), r_(r), e_(e)
     {
     }
 
-    float m() const
+    double m() const
     {
         return m_;
     }
 
-    float r() const
+    double r() const
     {
         return r_;
     }
 
-    float e() const
+    double e() const
     {
         return e_;
     }
 
 private:
-    float m_;                  //  kg
-    float r_;                  //  m
-    float e_;                  // elastic coefficient
+    double m_;                  //  kg
+    double r_;                  //  m
+    double e_;                  // elastic coefficient
 };

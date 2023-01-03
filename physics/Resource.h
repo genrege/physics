@@ -20,6 +20,7 @@
 #define ID_SIMULATION6                  32776
 #define ID_SIMULATION7                  32777
 #define ID_SIMULATION8                  32778
+#define ID_SIMULATION9                  32779
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
