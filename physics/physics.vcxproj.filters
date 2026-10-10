@@ -45,7 +45,7 @@
     <ClInclude Include="mass.h">
       <Filter>physics</Filter>
     </ClInclude>
-    <ClInclude Include="double2.h">
+    <ClInclude Include="vector2.h">
       <Filter>physics</Filter>
     </ClInclude>
     <ClInclude Include="damper.h">
@@ -68,8 +68,8 @@
     <ClCompile Include="simulation_examples.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="double2.cpp">
-      <Filter>physics</Filter>
+    <ClCompile Include="vector2.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

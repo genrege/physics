@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<model>
+  <params xmin="-5000" xmax="5000" ymin="-5000" ymax="5000" dt="0.05" iterations="10" />
+  <generators>
+    <grid id="main" rows="30" cols="42" originX="-5000" originY="-3500" xdist="100" ydist="100" radius="25" />
+  </generators>
+  <connections>
+    <spring rule="vertical" k_expression="rows - r" l0="100" />
+    <spring rule="horizontal" k="3.1" l0="100" />
+    <spring rule="diag" k_expression="rows - r" l0="141.421" />
+  </connections>
+  <extras>
+    <mass m="3.1353e+23" r="20" />
+    <mass m="20" r="75" pos="3800,3800" vel="-42,-68" />
+    <mass m="580" r="75" pos="4500,-1800" vel="-80,-12" />
+    <mass m="250" r="75" pos="5100,3800" vel="-90,-100" />
+    <mass m="650" r="75" pos="-7200,3800" vel="32,-72" />
+  </extras>
+
+</model>

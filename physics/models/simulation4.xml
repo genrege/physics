@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<model>
+  <params xmin="-2.6055e+10" xmax="2.6055e+10" ymin="-2.6055e+10" ymax="2.6055e+10" dt="2500" iterations="1" />
+  <generators>
+    <grid id="neg" x_range="-25..19" y_range="-20..18" spacing="30*LunarRadius" mass="1.80019e+23" radius="2.0844e+07" velocity_pattern="600 - x*10, -500 - y*5" />
+    <grid id="pos" x_range="-25..19" y_range="-20..18" spacing="30*LunarRadius" mass="1.80019e+23" radius="2.0844e+07" velocity_pattern="-500 + x*5, 400 + y*5" />
+  </generators>
+  <extras>
+    <mass m="2.3888e+26" r="5.211e+07" pos="0,0" />
+  </extras>
+
+</model>

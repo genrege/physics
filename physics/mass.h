@@ -1,7 +1,7 @@
 #pragma once
 
 #include "constants.h"
-#include "double2.h"
+#include "vector2.h"
 
 class mass
 {

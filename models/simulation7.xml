@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<model>
+  <params xmin="-4000" xmax="3000" ymin="-2000" ymax="5000" dt="0.1" iterations="10" />
+  <masses>
+    <!-- 22x22 grid of masses -->
+  </masses>
+  <springs />
+  <dampers />
+</model>

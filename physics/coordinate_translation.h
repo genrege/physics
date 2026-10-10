@@ -11,13 +11,13 @@ public:
 
     }
 
-    int x_to_screen(double x)
+    int x_to_screen(double x) const
     {
         const auto scale = double((screen_size_.right - screen_size_.left) / (xmax_ - xmin_));
 
         return int((x - xmin_) * scale);
     }
-    int y_to_screen(double y)
+    int y_to_screen(double y) const
     {
         const auto scale = double((screen_size_.bottom - screen_size_.top) / (ymax_ - ymin_));
 

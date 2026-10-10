@@ -5,6 +5,7 @@
 #include "coordinate_translation.h"
 
 #include <memory>
+#include <string>
 
 std::shared_ptr<simulation> create_simulation_1(std::vector<mass_state>& mass_states, std::vector<spring_state>& spring_states, std::vector<damper_state>& damper_states);
 std::shared_ptr<simulation> create_simulation_2(std::vector<mass_state>& mass_states, std::vector<spring_state>& spring_states, std::vector<damper_state>& damper_states);
@@ -15,3 +16,6 @@ std::shared_ptr<simulation> create_simulation_6(std::vector<mass_state>& mass_st
 std::shared_ptr<simulation> create_simulation_7(std::vector<mass_state>& mass_states, std::vector<spring_state>& spring_states, std::vector<damper_state>& damper_states);
 std::shared_ptr<simulation> create_simulation_8(std::vector<mass_state>& mass_states, std::vector<spring_state>& spring_states, std::vector<damper_state>& damper_states);
 std::shared_ptr<simulation> create_simulation_9(std::vector<mass_state>& mass_states, std::vector<spring_state>& spring_states, std::vector<damper_state>& damper_states);
+
+// Load a simulation model from XML file (declarative or explicit). Returns nullptr on error.
+std::shared_ptr<simulation> create_simulation_from_xml(const std::string& path, std::vector<mass_state>& mass_states, std::vector<spring_state>& spring_states, std::vector<damper_state>& damper_states);

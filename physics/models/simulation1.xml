@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<model>
+  <params xmin="-3e+08" xmax="7e+08" ymin="-3e+08" ymax="7e+08" dt="1" iterations="100" />
+  <masses>
+    <mass m="5.972e+24" r="6.375e+06" e="1" />
+    <mass m="5.972e+24" r="6.375e+06" e="1" />
+    <mass m="3.5832e+24" r="1.275e+06" e="1" />
+    <mass m="7.3477e+22" r="1.737e+06" e="1" />
+    <mass m="7.3477e+22" r="1.737e+06" e="1" />
+    <mass m="7.3477e+22" r="1.737e+06" e="1" />
+    <mass m="75" r="10000" e="1" />
+    <mass m="9000" r="40000" e="1" />
+  </masses>
+  <springs>
+  </springs>
+  <dampers>
+  </dampers>
+</model>

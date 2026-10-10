@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<model>
+  <params xmin="-0.2" xmax="1" ymin="-0.2" ymax="1" dt="2e-05" iterations="100" />
+  <generators>
+    <pendulum_row count="25" anchor_spacing="0.05" anchor_y="0" ball_offsets="0.4,0.6" />
+  </generators>
+  <connections>
+    <spring pattern="anchor-ball" k="1500" l0="0.4" damping_pattern="i<7?100:10" />
+  </connections>
+  <extras>
+    <mass m="5.972e+24" r="20" pos="0,6.375e+06" />
+  </extras>
+
+</model>

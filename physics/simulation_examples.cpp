@@ -88,7 +88,7 @@ std::shared_ptr<simulation> create_simulation_1(std::vector<mass_state>& mass_st
 
     std::vector<damper> dampers;
 
-    return std::make_shared<simulation>(model_system(masses, springs, dampers), -300000000, 700000000, -300000000, 700000000, 1, 240);
+    return std::make_shared<simulation>(model_system(masses, springs, dampers), -300000000, 700000000, -300000000, 700000000, 1, 100);
 }
 
 std::shared_ptr<simulation> create_simulation_2(std::vector<mass_state>& mass_states, std::vector<spring_state>& spring_states, std::vector<damper_state>& damper_states)
@@ -151,8 +151,8 @@ std::shared_ptr<simulation> create_simulation_3(std::vector<mass_state>& mass_st
             const auto fixed = (r < 5 && (c < cols / 4 || c > 3 * cols / 4));// || (r == 0 && c == cols / 2);
 
             const auto mass_id = r < rows / 2 ?
-                simulation::add_mass(12., radius, double2{ x, y }, double2{ 0, 0 }, double2{}, fixed, masses, mass_states)
-                : simulation::add_mass(34., radius, double2{ x, y }, double2{ 0, 0 }, double2{}, fixed, masses, mass_states);
+                simulation::add_mass(12., radius, vector2{ x, y }, vector2{ 0, 0 }, vector2{}, fixed, masses, mass_states)
+                : simulation::add_mass(34., radius, vector2{ x, y }, vector2{ 0, 0 }, vector2{}, fixed, masses, mass_states);
 
             if (r < rows - 1)
             {
@@ -192,24 +192,24 @@ std::shared_ptr<simulation> create_simulation_4(std::vector<mass_state>& mass_st
     std::vector<spring> springs;
     std::vector<damper> dampers;
 
-    const auto m = constants::lunar_mass * 0.75;
-    const auto r = constants::lunar_radius * 2.0;
+    const auto m = constants::lunar_mass * 2.45;
+    const auto r = constants::lunar_radius * 3.0;
 
-    for (double x = -25; x < 10; ++x)
+    for (double x = -25; x < 20; ++x)
     {
-        for (double y = -20; y < 20; ++y)
+        for (double y = -20; y < 19; ++y)
         {
-            simulation::add_mass(m, r * 4.0, 0.5, { (x) * -30 * constants::lunar_radius, (y - 20) * -30 * constants::lunar_radius }, { 600 - x * 70, -500 - y * 60 }, {}, false, masses, mass_states);
+            simulation::add_mass(m, r * 4.0, 0.99, { (x) * -30 * constants::lunar_radius, (y - 20) * -30 * constants::lunar_radius }, { 600 - x * 10, -500 - y * 5 }, {}, false, masses, mass_states);
 
-            simulation::add_mass(m, r * 4.0, 0.5, { (x) * 30 * constants::lunar_radius, (y - 20) * 30 * constants::lunar_radius }, { -500 + x * 80,  400 + y * 60 }, {}, false, masses, mass_states);
+            simulation::add_mass(m, r * 4.0, 0.99, { (x) * 30 * constants::lunar_radius, (y - 20) * 30 * constants::lunar_radius }, { -500 + x * 5,  400 + y * 5 }, {}, false, masses, mass_states);
         }
     }
 
-    simulation::add_mass(constants::earth_mass * 9.0f, r * 40, 0.96, { -30.0f * 30 * constants::lunar_radius, 30 * 30 * constants::lunar_radius }, { -1600.0f, 0.0f }, {}, false, masses, mass_states);
-    simulation::add_mass(constants::earth_mass * 0.5f, r * 8, 0.96, { -60.0f * 30 * constants::lunar_radius, 0.0f }, { -500.0f, 0.0f }, {}, false, masses, mass_states);
-    simulation::add_mass(constants::earth_mass * 0.4f, r * 6, 0.96, { -constants::earth_radius * 40, constants::earth_radius * 90 }, { 1200.0f, 400.0f }, {}, false, masses, mass_states);
+    simulation::add_mass(constants::earth_mass * 40.0f, r * 10, 0.99, {0, 0}, { 0, 0 }, {}, false, masses, mass_states);
+    //simulation::add_mass(constants::earth_mass * 0.5f, r * 8, 0.97, { -60.0f * 30 * constants::lunar_radius, 0.0f }, { -500.0f, 0.0f }, {}, false, masses, mass_states);
+    //simulation::add_mass(constants::earth_mass * 0.4f, r * 6, 0.96, { -constants::earth_radius * 40, constants::earth_radius * 90 }, { 1200.0f, 400.0f }, {}, false, masses, mass_states);
 
-    return std::make_shared<simulation>(model_system(masses, springs, dampers), -500 * 30 * constants::lunar_radius, 500 * 30 * constants::lunar_radius, -500 * 30 * constants::lunar_radius, 500 * 30 * constants::lunar_radius, 500, 1);
+    return std::make_shared<simulation>(model_system(masses, springs, dampers), -500 * 30 * constants::lunar_radius, 500 * 30 * constants::lunar_radius, -500 * 30 * constants::lunar_radius, 500 * 30 * constants::lunar_radius, 2500, 1);
 }
 
 std::shared_ptr<simulation> create_simulation_5(std::vector<mass_state>& mass_states, std::vector<spring_state>& spring_states, std::vector<damper_state>& damper_states)
@@ -243,9 +243,11 @@ std::shared_ptr<simulation> create_simulation_6(std::vector<mass_state>& mass_st
     double ddist = sqrt(xdist * xdist + ydist * ydist);
     double radius = 30;
 
+    double spring_k = 1.0;
+
     for (size_t r = 0; r < rows; ++r)
     {
-        double y = -1600 + (double)r * xdist;
+        double y = -1400 + (double)r * xdist;
         for (size_t c = 0; c < cols; ++c)
         {
             double x = -3500 + (double)c * ydist;
@@ -253,47 +255,43 @@ std::shared_ptr<simulation> create_simulation_6(std::vector<mass_state>& mass_st
             const auto fixed = false;
 
             const auto mass_id = r < rows / 2 ?
-                simulation::add_mass(1., radius, double2{ x, y }, double2{ 7, 0 }, double2{}, fixed, masses, mass_states)
-                : simulation::add_mass(0.8, radius, double2{ x, y }, double2{ -5, 0 }, double2{}, fixed, masses, mass_states);
+                simulation::add_mass(1., radius, vector2{ x, y }, vector2{ 7, 0 }, vector2{}, fixed, masses, mass_states)
+                : simulation::add_mass(0.8, radius, vector2{ x, y }, vector2{ -5, 0 }, vector2{}, fixed, masses, mass_states);
 
             if (r < rows - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c, true, 1, ydist, springs, spring_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c, true, spring_k, ydist, springs, spring_states);
                 simulation::add_damper(mass_id, (r + 1) * cols + c, springs[spring_id], dampers, damper_states);
             }
             if (c < cols - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r)*cols + c + 1, true, 1, xdist, springs, spring_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r)*cols + c + 1, true, spring_k, xdist, springs, spring_states);
                 simulation::add_damper(mass_id, (r)*cols + c + 1, springs[spring_id], dampers, damper_states);
             }
             if (r < rows - 1 && c < cols - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c + 1, true, 1, ddist, springs, spring_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r + 1) * cols + c + 1, true, spring_k, ddist, springs, spring_states);
                 simulation::add_damper(mass_id, (r + 1) * cols + c + 1, springs[spring_id], dampers, damper_states);
             }
             if (r > 0 && c < cols - 1)
             {
-                const auto spring_id = simulation::add_spring(mass_id, (r - 1) * cols + c + 1, true, 1, ddist, springs, spring_states);
+                const auto spring_id = simulation::add_spring(mass_id, (r - 1) * cols + c + 1, true, spring_k, ddist, springs, spring_states);
                 simulation::add_damper(mass_id, (r - 1) * cols + c + 1, springs[spring_id], dampers, damper_states);
             }
         }
     }
 
-    simulation::add_mass(constants::earth_mass * 0.002f, 20.0f, { 0.0f, constants::earth_radius }, { 0.0f, 0.0f }, {}, false, masses, mass_states);
+    simulation::add_mass(constants::earth_mass * 0.0015f, 20.0f, { 0.0f, constants::earth_radius }, { 0.0f, 0.0f }, {}, false, masses, mass_states);
 
-    for (int i = 1; i < 14; ++i)
+    static int cb = 4;
+    for (int i = 1; i < cb; ++i)
     {
-        const auto id_mass = simulation::add_mass(1.0f + 2 * i, 20 + 3.0f * i, { -1500.0f - i * 100.0f, -2500 - i * 35.0f }, { 0, -5.0f }, {}, false, masses, mass_states);
+        const auto id_mass = simulation::add_mass(1.0f + 6 * i, 20 + 3.0f * i, { -2500 - i * 100.0f, -2500 - i * 35.0f }, { 0, -5.0f }, {}, false, masses, mass_states);
         if (i > 1)
         {
             const auto id_spring = simulation::add_spring(id_mass - 1, id_mass, true, 1.0, 140.0f, springs, spring_states);
             simulation::add_damper(id_mass - 1, id_mass, springs[id_spring], dampers, damper_states);
         }
-    }
-
-    for (int i = 1; i < 14; ++i)
-    {
-        simulation::add_mass(1.0f + 10 * i, 10 + 4.0f * i, { -1500.0f - i * 100.0f, -3500 - i * 35.0f }, { 0, -5.0f }, {}, false, masses, mass_states);
     }
 
     return std::make_shared<simulation>(model_system(masses, springs, dampers), -4000, 3000, -2000, 5000, 0.1, 10);
@@ -321,7 +319,7 @@ std::shared_ptr<simulation> create_simulation_7(std::vector<mass_state>& mass_st
 
             const auto fixed = false;
 
-            simulation::add_mass(1., radius, 0.99, double2{ x, y }, double2{ 3.0f - r % 2, 0 }, double2{}, fixed, masses, mass_states);
+            simulation::add_mass(1., radius, 0.99, vector2{ x, y }, vector2{ 3.0f - r % 2, 0 }, vector2{}, fixed, masses, mass_states);
         }
     }
     simulation::add_mass(constants::earth_mass * 0.01f, 20.0f, { 0.0f, constants::earth_radius }, { 0.0f, 0.0f }, {}, false, masses, mass_states);
@@ -390,7 +388,7 @@ std::shared_ptr<simulation> create_simulation_9(std::vector<mass_state>& mass_st
     {
         for (int c = 0; c < 8; ++c)
         {
-            const auto idM = simulation::add_mass(2.0, 20.0, 0.9, { -c * 15.0 - 20.0, -650 - r * 30.0 }, {}, {}, false, masses, mass_states);
+            const auto idM = simulation::add_mass(2.0, 20.0, 0.9, { -c * 15.0 - 20.0, -650.0 - r * 30.0 }, {}, {}, false, masses, mass_states);
         }
     }
 

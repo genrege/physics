@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<model>
+  <params xmin="-1000" xmax="1000" ymin="-1000" ymax="1000" dt="0.1" iterations="10" />
+  <generators>
+    <explicit_list>
+      <mass m="1" r="40" />
+      <mass m="1" r="40" />
+      <mass m="1" r="40" />
+      <mass m="1" r="40" />
+      <mass m="1" r="40" />
+      <mass m="1" r="40" />
+      <mass m="1" r="40" />
+    </explicit_list>
+  </generators>
+
+</model>
