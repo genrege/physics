@@ -26,6 +26,11 @@ public:
     {
         return k_;
     }
+
+    double l0() const
+    {
+        return l0_;
+    }
 private:
     size_t id_mass1_;
     size_t id_mass2_;

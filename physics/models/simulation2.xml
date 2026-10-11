@@ -1,32 +1,31 @@
-<?xml version="1.0"?>
-<model>
-  <params xmin="-4000" xmax="4000" ymin="-4000" ymax="4000" dt="0.1" iterations="10" />
+<?xml version="1.0" encoding="utf-8"?>
+<simulation xmin="-4000" xmax="4000" ymin="-4000" ymax="4000" dt="0.1" iterations="10">
   <masses>
-    <mass m="5.972e+21" r="20" e="1" />
-    <mass m="100" r="20" e="1" />
-    <mass m="100" r="20" e="1" />
-    <mass m="100" r="20" e="1" />
-    <mass m="100" r="20" e="1" />
-    <mass m="50" r="20" e="1" />
+    <mass m="5.97200028365478e+21" r="20" x="0" y="6375000"/>
+    <mass m="100" r="20" x="500" y="100" vx="-3"/>
+    <mass m="100" r="20" x="600" y="100"/>
+    <mass m="100" r="20" x="500" y="200"/>
+    <mass m="100" r="20" x="600" y="200"/>
+    <mass m="50" r="20" x="550" y="150"/>
   </masses>
   <springs>
-    <spring a="1" b="2" k="10" l0="100" />
-    <spring a="1" b="3" k="10" l0="100" />
-    <spring a="2" b="4" k="10" l0="100" />
-    <spring a="3" b="4" k="10" l0="100" />
-    <spring a="1" b="5" k="10" l0="75" />
-    <spring a="2" b="5" k="10" l0="75" />
-    <spring a="3" b="5" k="10" l0="75" />
-    <spring a="4" b="5" k="10" l0="75" />
+    <spring a="1" b="2" k="10" l0="100"/>
+    <spring a="1" b="3" k="10" l0="100"/>
+    <spring a="2" b="4" k="10" l0="100"/>
+    <spring a="3" b="4" k="10" l0="100"/>
+    <spring a="1" b="5" k="10" l0="75"/>
+    <spring a="2" b="5" k="10" l0="75"/>
+    <spring a="3" b="5" k="10" l0="75"/>
+    <spring a="4" b="5" k="10" l0="75"/>
   </springs>
   <dampers>
-    <damper a="1" b="2" k="0.6" />
-    <damper a="1" b="3" k="0.6" />
-    <damper a="2" b="4" k="0.6" />
-    <damper a="3" b="4" k="0.6" />
-    <damper a="1" b="5" k="0.1" />
-    <damper a="2" b="5" k="0.1" />
-    <damper a="3" b="5" k="0.1" />
-    <damper a="4" b="5" k="0.1" />
+    <damper a="1" b="2" k="0.6" l0="700"/>
+    <damper a="1" b="3" k="0.6" l0="700"/>
+    <damper a="2" b="4" k="0.6" l0="700"/>
+    <damper a="3" b="4" k="0.6" l0="700"/>
+    <damper a="1" b="5" k="0.1" l0="700"/>
+    <damper a="2" b="5" k="0.1" l0="700"/>
+    <damper a="3" b="5" k="0.1" l0="700"/>
+    <damper a="4" b="5" k="0.1" l0="700"/>
   </dampers>
-</model>
+</simulation>

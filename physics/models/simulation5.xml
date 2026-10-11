@@ -1,16 +1,12 @@
-<?xml version="1.0"?>
-<model>
-  <params xmin="-1000" xmax="1000" ymin="-1000" ymax="1000" dt="0.1" iterations="10" />
-  <generators>
-    <explicit_list>
-      <mass m="1" r="40" />
-      <mass m="1" r="40" />
-      <mass m="1" r="40" />
-      <mass m="1" r="40" />
-      <mass m="1" r="40" />
-      <mass m="1" r="40" />
-      <mass m="1" r="40" />
-    </explicit_list>
-  </generators>
-
-</model>
+<?xml version="1.0" encoding="utf-8"?>
+<simulation xmin="-1000" xmax="1000" ymin="-1000" ymax="1000" dt="0.1" iterations="10">
+  <masses>
+    <mass m="1" r="40" x="-2000" y="0" e="0.99" vx="2"/>
+    <mass m="1" r="40" x="-1000" y="0" e="0.99"/>
+    <mass m="1" r="40" x="800" y="20" e="0.99"/>
+    <mass m="1" r="40" x="950" y="20" e="0.99"/>
+    <mass m="1" r="40" x="1200" y="-10" e="0.99"/>
+    <mass m="1" r="40" x="1300" y="15" e="0.99"/>
+    <mass m="1" r="40" x="1500" y="30" e="0.99"/>
+  </masses>
+</simulation>

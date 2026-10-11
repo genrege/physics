@@ -57,18 +57,48 @@
     <ClInclude Include="coordinate_translation.h">
       <Filter>graphics</Filter>
     </ClInclude>
-    <ClInclude Include="simulation_examples.h">
+    <ClInclude Include="simulation_xml.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cpu_engine.h">
+      <Filter>physics</Filter>
+    </ClInclude>
+    <ClInclude Include="editor_model.h">
+      <Filter>physics</Filter>
+    </ClInclude>
+    <ClInclude Include="editor_ui.h">
+      <Filter>physics</Filter>
+    </ClInclude>
+    <ClInclude Include="info_format.h">
+      <Filter>physics</Filter>
+    </ClInclude>
+    <ClInclude Include="physics_engine.h">
+      <Filter>physics</Filter>
+    </ClInclude>
+    <ClInclude Include="physics_math.h">
+      <Filter>physics</Filter>
+    </ClInclude>
+    <ClInclude Include="sim_runner.h">
+      <Filter>physics</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="physics.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="simulation_examples.cpp">
+    <ClCompile Include="cpu_engine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="vector2.cpp">
+    <ClCompile Include="editor_model.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="editor_ui.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="engine_factory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="simulation_xml.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

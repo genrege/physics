@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Sun, the eight planets and 21 of their larger moons on 2026-10-10 00:00 TDB.
+  Positions and velocities come from NASA/JPL Horizons (DE441 and satellite ephemerides) in the
+  ecliptic frame. The simulator is 2D, so each orbit is laid flat into the ecliptic plane: a planet is
+  placed relative to the Sun, and a moon relative to its planet, with the same distance, speed and
+  position along its orbit but with the orbit tilted into the plane. The whole system is shifted to its
+  centre of mass so it does not drift. Masses use GM values (G = 6.6743e-11) so orbits close properly.
+  Units are metres, kilograms and seconds; dt = 100 s and 100 steps per frame, about 7 days per second at 60 fps.
+  Radii are real, so most bodies are far smaller than a pixel unless you zoom in. Saturn's rings are not modelled.
+-->
+<simulation xmin="-5e12" xmax="5e12" ymin="-5e12" ymax="5e12" dt="100" iterations="100" bounce_bottom="false">
+  <masses>
+    <!-- Sun -->
+    <mass m="1.9884098713264315E+30" r="695700000" x="-178348130.70494905" y="-765739513.46706" vx="10.442842848711649" vy="4.4602255425393862" colour="#FFD700" label="Sun"/>
+    <!-- Mercury -->
+    <mass m="3.3010006369207261E+23" r="2439700" x="26294731258.305721" y="-61809674851.255" vx="35068.672203466522" vy="21644.775851468861" colour="#A9A9A9" label="Mercury"/>
+    <!-- Venus -->
+    <mass m="4.8673058148420064E+24" r="6051800" x="107438639115.45772" y="13912057054.343161" vx="-4899.4898879090088" vy="34547.554622052769" colour="#E8C170" label="Venus"/>
+    <!-- Earth -->
+    <mass m="5.9721683987234617E+24" r="6371000" x="143206732739.76523" y="41263871376.863922" vx="-8853.5847199341715" vy="28490.793774401489" colour="#3C7DFF" label="Earth"/>
+    <!-- Moon -->
+    <mass m="7.3457891703998927E+22" r="1737400" x="142825741880.98154" y="41207263996.577026" vx="-8744.806129665305" vy="27470.8247261897" colour="#D0D0D0" label="Moon"/>
+    <!-- Mars -->
+    <mass m="6.4169089213850146E+23" r="3389500" x="694519625.47624993" y="233983993790.02054" vx="-23308.449373081639" vy="2164.7678471193435" colour="#D1492E" label="Mars"/>
+    <!-- Phobos -->
+    <mass m="1.0659E+16" r="11100" x="703487074.72056568" y="233981764720.19363" vx="-22794.456932691086" vy="4271.7396286701642" colour="#8B7765" label="Phobos"/>
+    <!-- Deimos -->
+    <mass m="1.4762E+15" r="6200" x="671980859.2701596" y="233977497953.08203" vx="-22934.541571550959" vy="866.19377701805672" colour="#A39382" label="Deimos"/>
+    <!-- Jupiter -->
+    <mass m="1.8981246258034552E+27" r="69911000" x="-530182065918.57849" y="590909098058.52649" vx="-9883.6896640975156" vy="-8109.722954035783" colour="#D9A066" label="Jupiter"/>
+    <!-- Io -->
+    <mass m="8.9296495512638034E+22" r="1821600" x="-530363270204.66534" y="591290294375.41309" vx="-25560.797767862572" vy="-15482.930007919769" colour="#F2E04C" label="Io"/>
+    <!-- Europa -->
+    <mass m="4.7986140868705335E+22" r="1560800" x="-529892813201.73895" y="591519208335.3894" vx="-22265.539560622703" vy="-2344.9276716698814" colour="#E0D2B4" label="Europa"/>
+    <!-- Ganymede -->
+    <mass m="1.4814788067662528E+23" r="2634100" x="-530884668788.66919" y="591719830237.6062" vx="-18099.981237395685" vy="-15206.999592423561" colour="#A89F91" label="Ganymede"/>
+    <!-- Callisto -->
+    <mass m="1.0756608183629745E+23" r="2410300" x="-529040957027.51306" y="592393951980.05957" vx="-16401.313297622295" vy="-3053.2048785084453" colour="#6E655A" label="Callisto"/>
+    <!-- Saturn -->
+    <mass m="5.6831737012121129E+26" r="58232000" x="1384316956593.9001" y="271406288929.2807" vx="-2386.1287551695364" vy="9459.85934629877" colour="#EAD6A2" label="Saturn"/>
+    <!-- Mimas -->
+    <mass m="3.7493E+19" r="198000" x="1384171670225.1772" y="271287770286.79193" vx="6750.1394723548683" vy="-1366.7154293591691" colour="#C8C8C8" label="Mimas"/>
+    <!-- Enceladus -->
+    <mass m="1.08022E+20" r="252000" x="1384213114130.2014" y="271620913073.09787" vx="-13763.704248432419" vy="4016.5040574875511" colour="#FFFFFF" label="Enceladus"/>
+    <!-- Tethys -->
+    <mass m="6.1745E+20" r="531000" x="1384264780846.5349" y="271116278474.59912" vx="8786.0682832156017" vy="7448.8710432354592" colour="#E6E6E6" label="Tethys"/>
+    <!-- Dione -->
+    <mass m="1.095452E+21" r="561000" x="1384133177557.6106" y="271075778796.47058" vx="6356.79040080977" vy="4588.7848814352155" colour="#DADADA" label="Dione"/>
+    <!-- Rhea -->
+    <mass m="2.306518E+21" r="764000" x="1384768439633.4006" y="271677504700.845" vx="-6752.8942791436457" vy="16741.796433427444" colour="#CFCFCF" label="Rhea"/>
+    <!-- Titan -->
+    <mass m="1.3451807680206165E+23" r="2574700" x="1383413561809.5938" y="270555576278.85455" vx="1470.4556620250769" vy="5557.6696746311627" colour="#E3A33B" label="Titan"/>
+    <!-- Iapetus -->
+    <mass m="1.805635E+21" r="734000" x="1386517923961.4963" y="268670769991.27203" vx="140.25593927207458" vy="11598.767092974711" colour="#B8AE9C" label="Iapetus"/>
+    <!-- Uranus -->
+    <mass m="8.6809871537090045E+25" r="25362000" x="1331137059855.37" y="2584734900341.6328" vx="-6105.3506524527611" vy="2800.64049552902" colour="#7DE3E8" label="Uranus"/>
+    <!-- Miranda -->
+    <mass m="6.4E+19" r="236000" x="1331008327763.4539" y="2584717904616.52" vx="-6969.956958469802" vy="9424.9243871443232" colour="#BFBFBF" label="Miranda"/>
+    <!-- Ariel -->
+    <mass m="1.251E+21" r="579000" x="1331256579656.1458" y="2584883888321.7861" vx="-1810.9200162778393" vy="-646.69354426817824" colour="#D3D3D3" label="Ariel"/>
+    <!-- Umbriel -->
+    <mass m="1.275E+21" r="585000" x="1331209916896.7295" y="2584989913753.917" vx="-1602.5043305936717" vy="1521.7155643250323" colour="#8F8F8F" label="Umbriel"/>
+    <!-- Titania -->
+    <mass m="3.4E+21" r="789000" x="1330702131657.8105" y="2584764470642.3184" vx="-5864.6817556200331" vy="6439.8042932272128" colour="#C9B8A8" label="Titania"/>
+    <!-- Oberon -->
+    <mass m="3.076E+21" r="761000" x="1331351282479.2593" y="2585277213126.8613" vx="-3174.8582570217309" vy="1635.4939402643638" colour="#A89888" label="Oberon"/>
+    <!-- Neptune -->
+    <mass m="1.0240924096909039E+26" r="24622000" x="4464460699562.5488" y="211055443537.09662" vx="-290.08609906875517" vy="5461.8630825769487" colour="#3F54BA" label="Neptune"/>
+    <!-- Triton -->
+    <mass m="2.1389479046491767E+22" r="1353400" x="4464106076863.2178" y="211064582143.95834" vx="-176.4776196627308" vy="9850.5337913178155" colour="#D7C4C4" label="Triton"/>
+    <!-- Proteus -->
+    <mass m="4.4E+19" r="210000" x="4464378273149.6631" y="210971429198.76157" vx="5147.73378565001" vy="123.99424462333351" colour="#888888" label="Nereid"/>
+  </masses>
+</simulation>
