@@ -81,6 +81,19 @@ public:
         Assert::IsFalse(contains(placed, 1));
     }
 
+    TEST_METHOD(a_planet_keeps_its_label_over_its_much_lighter_moons)
+    {
+        // A planet ringed by moons a tiny fraction of its mass, with one isolated moon further out.
+        std::vector<label_body> bodies = { body(0, 200, 100, 8, 1e27) };
+        for (size_t i = 1; i <= 12; ++i)
+            bodies.push_back(body(i, 200.0f + 6.0f * float(i % 4) - 9.0f, 100.0f + 5.0f * float(i % 3) - 5.0f, 1, 1e22 + double(i)));
+        bodies.push_back(body(99, 20, 250, 1, 1e22));
+
+        const auto placed = place_labels(bodies, 400, 300, fixed_size);
+        Assert::IsTrue(contains(placed, 0));
+        Assert::IsTrue(contains(placed, 99));
+    }
+
     TEST_METHOD(bodies_without_labels_neither_get_one_nor_block_one)
     {
         // Body 1 sits where body 2's label would go.

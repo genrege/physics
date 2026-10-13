@@ -56,6 +56,10 @@
 #define ID_VIEW_STOP_TRACKING           32871
 #define ID_SIMULATION_MILKYWAY          32852
 #define ID_EDITOR_BUNDLED_MILKYWAY      32853
+#define ID_SIMULATION_SOLAR_ASTEROIDS   32854
+#define ID_EDITOR_BUNDLED_SOLAR_ASTEROIDS 32855
+#define ID_SIMULATION_SOLAR_SIMPLE      32856
+#define ID_EDITOR_BUNDLED_SOLAR_SIMPLE  32857
 #define IDC_STATIC                      -1
 
 // Next default values for new objects

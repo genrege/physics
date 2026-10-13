@@ -13,7 +13,7 @@ public:
     TEST_METHOD(stop_returns_when_consumer_never_acknowledges_frames)
     {
         std::atomic<int> steps{ 0 };
-        sim_runner runner([&] { ++steps; }, [] { return true; }, std::chrono::milliseconds(10000));
+        sim_runner runner([&] { ++steps; return true; }, [] { return true; }, std::chrono::milliseconds(10000));
         runner.start();
         while (steps < 1)
             std::this_thread::yield();
@@ -25,7 +25,7 @@ public:
     TEST_METHOD(stop_returns_while_step_is_slow)
     {
         std::atomic<bool> in_step{ false };
-        sim_runner runner([&] { in_step = true; std::this_thread::sleep_for(std::chrono::milliseconds(100)); }, [] { return false; });
+        sim_runner runner([&] { in_step = true; std::this_thread::sleep_for(std::chrono::milliseconds(100)); return true; }, [] { return false; });
         runner.start();
         while (!in_step)
             std::this_thread::yield();
@@ -37,7 +37,7 @@ public:
     TEST_METHOD(frame_done_paces_the_worker)
     {
         std::atomic<int> steps{ 0 };
-        sim_runner runner([&] { ++steps; }, [] { return true; }, std::chrono::milliseconds(10000));
+        sim_runner runner([&] { ++steps; return true; }, [] { return true; }, std::chrono::milliseconds(10000));
         runner.start();
         while (steps < 1)
             std::this_thread::yield();
@@ -53,7 +53,7 @@ public:
     TEST_METHOD(rapid_start_stop_cycles_do_not_hang)
     {
         std::atomic<int> steps{ 0 };
-        sim_runner runner([&] { ++steps; }, [] { return true; }, std::chrono::milliseconds(10000));
+        sim_runner runner([&] { ++steps; return true; }, [] { return true; }, std::chrono::milliseconds(10000));
 
         auto cycles = std::async(std::launch::async, [&] {
             for (int i = 0; i < 1000; ++i)

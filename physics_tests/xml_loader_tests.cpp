@@ -223,6 +223,100 @@ public:
         Assert::IsTrue(*masses[3].label() == "Earth");
         Assert::IsTrue(*masses[4].label() == "Moon");
         Assert::IsTrue(*masses[27].label() == "Neptune");
+        Assert::IsTrue(*masses[30].label() == "Pluto");
+    }
+
+    TEST_METHOD(simplified_solar_system_keeps_the_original_30_bodies)
+    {
+        const auto simplified = load_model_file(models_dir() / "solar_system_simplified.xml");
+        const auto full = load_model_file(models_dir() / "solar_system.xml");
+        const auto& masses = simplified.sim->model().masses();
+        Assert::AreEqual(size_t(30), masses.size());
+        Assert::IsFalse(simplified.sim->walls().bottom);
+
+        // The same Sun, planets and 21 larger moons as the full model, in the same order.
+        for (size_t i = 0; i < masses.size(); ++i)
+        {
+            Assert::IsTrue(*masses[i].label() == *full.sim->model().masses()[i].label());
+            Assert::IsTrue(masses[i].m() == full.sim->model().masses()[i].m());
+            Assert::IsTrue(masses[i].r() == full.sim->model().masses()[i].r());
+        }
+        Assert::IsTrue(*masses[29].label() == "Proteus");
+    }
+
+    TEST_METHOD(solar_system_has_pluto_and_the_other_moons)
+    {
+        const auto loaded = load_model_file(models_dir() / "solar_system.xml");
+        const auto& masses = loaded.sim->model().masses();
+        Assert::AreEqual(size_t(468), masses.size());
+
+        const double au = 1.495978707e11;
+        const auto pluto_from_sun = loaded.masses[30].position_ - loaded.masses[0].position_;
+        Assert::IsTrue(pluto_from_sun.modulus() > 28.0 * au && pluto_from_sun.modulus() < 51.0 * au);
+
+        // Charon follows Pluto closely, and every later body is a moon that sits near its planet.
+        const auto charon_from_pluto = loaded.masses[31].position_ - loaded.masses[30].position_;
+        Assert::IsTrue(*masses[31].label() == "Charon");
+        Assert::IsTrue(charon_from_pluto.modulus() > 1.5e7 && charon_from_pluto.modulus() < 2.5e7);
+
+        const std::vector<std::string> expected = { "Metis", "Amalthea", "Himalia", "Pan", "Hyperion", "Phoebe", "Puck", "Sycorax", "Nereid", "Nix", "Hydra" };
+        for (const auto& name : expected)
+        {
+            bool found = false;
+            for (const auto& m : masses)
+                found = found || (m.label() && *m.label() == name);
+            Assert::IsTrue(found, std::wstring(name.begin(), name.end()).c_str());
+        }
+    }
+
+    TEST_METHOD(asteroid_model_adds_the_belt_to_the_solar_system)
+    {
+        const auto plain = load_model_file(models_dir() / "solar_system.xml");
+        const auto loaded = load_model_file(models_dir() / "solar_system_asteroids.xml");
+        const auto& masses = loaded.sim->model().masses();
+        const size_t planets_and_moons = plain.sim->model().masses().size();
+        Assert::AreEqual(planets_and_moons + 260, masses.size());
+
+        // The planets and moons are the same bodies as in the plain model.
+        for (size_t i = 0; i < planets_and_moons; ++i)
+        {
+            Assert::IsTrue(*masses[i].label() == *plain.sim->model().masses()[i].label());
+            Assert::IsTrue(masses[i].m() == plain.sim->model().masses()[i].m());
+        }
+
+        // The ten most massive asteroids come first, heaviest first for the top four.
+        const std::vector<std::string> top = { "Ceres", "Vesta", "Pallas", "Hygiea", "Interamnia", "Davida", "Eunomia", "Juno", "Psyche", "Europa" };
+        for (size_t i = 0; i < top.size(); ++i)
+            Assert::IsTrue(*masses[planets_and_moons + i].label() == top[i], std::wstring(top[i].begin(), top[i].end()).c_str());
+        for (size_t i = 0; i < 3; ++i)
+            Assert::IsTrue(masses[planets_and_moons + i].m() > masses[planets_and_moons + i + 1].m());
+        Assert::IsTrue(masses[planets_and_moons].m() > 9.0e20 && masses[planets_and_moons].m() < 9.8e20);
+
+        // They all orbit the Sun between Mars and Jupiter (allowing for eccentric and Mars-crossing orbits).
+        const double au = 1.495978707e11;
+        for (size_t i = planets_and_moons; i < masses.size(); ++i)
+        {
+            Assert::IsTrue(masses[i].label().has_value() && !masses[i].label()->empty());
+            const double distance = loaded.masses[i].position_.distance(loaded.masses[0].position_) / au;
+            Assert::IsTrue(distance > 1.2 && distance < 5.5, (L"asteroid " + std::to_wstring(i) + L" at " + std::to_wstring(distance) + L" AU").c_str());
+            const double speed = (loaded.masses[i].velocity_ - loaded.masses[0].velocity_).modulus();
+            Assert::IsTrue(speed > 12.0e3 && speed < 30.0e3, (L"asteroid " + std::to_wstring(i) + L" speed").c_str());
+        }
+
+        auto engine = require_cuda();
+        engine->upload(*loaded.sim, loaded.masses, loaded.springs, loaded.dampers);
+        engine->step(8640, loaded.sim->dt());   // ten days
+
+        std::vector<mass_state> after;
+        auto springs = loaded.springs;
+        auto dampers = loaded.dampers;
+        engine->download(after, springs, dampers);
+        for (size_t i = planets_and_moons; i < masses.size(); ++i)
+        {
+            const double before = loaded.masses[i].position_.distance(loaded.masses[0].position_);
+            const double now = after[i].position_.distance(after[0].position_);
+            Assert::IsTrue(now > before * 0.95 && now < before * 1.05, (L"asteroid " + std::to_wstring(i) + L" left its orbit").c_str());
+        }
     }
 
     TEST_METHOD(milky_way_is_a_rotating_galaxy_with_a_flat_rotation_curve)
@@ -286,7 +380,7 @@ public:
     {
         const auto loaded = load_model_file(models_dir() / "solar_system.xml");
         const auto& masses = loaded.sim->model().masses();
-        Assert::AreEqual(size_t(30), masses.size());
+        Assert::AreEqual(size_t(468), masses.size());
         Assert::IsFalse(loaded.sim->walls().bottom);
 
         // Index 0 is the Sun, 3 the Earth and 4 the Moon.
@@ -318,11 +412,11 @@ public:
     {
         const auto loaded = load_model_file(models_dir() / "solar_system.xml");
 
-        // parent index of every body after the Sun (see the order of bodies in the file)
-        const std::vector<size_t> parent = { 0, 0, 0, 0, 3, 0, 5, 5, 0, 8, 8, 8, 8, 0, 13, 13, 13, 13, 13, 13, 13, 0, 21, 21, 21, 21, 21, 0, 27, 27 };
-        Assert::AreEqual(parent.size(), loaded.masses.size());
+        // parent index of every body after the Sun, for the planets, their first moons and Pluto (see the order of bodies in the file)
+        const std::vector<size_t> parent = { 0, 0, 0, 0, 3, 0, 5, 5, 0, 8, 8, 8, 8, 0, 13, 13, 13, 13, 13, 13, 13, 0, 21, 21, 21, 21, 21, 0, 27, 27, 0 };
+        Assert::IsTrue(loaded.masses.size() > parent.size());
 
-        auto engine = make_cpu_engine();
+        auto engine = require_cuda();
         engine->upload(*loaded.sim, loaded.masses, loaded.springs, loaded.dampers);
         engine->step(8640, loaded.sim->dt());   // ten days
 
@@ -331,7 +425,7 @@ public:
         auto dampers = loaded.dampers;
         engine->download(after, springs, dampers);
 
-        for (size_t i = 1; i < after.size(); ++i)
+        for (size_t i = 1; i < parent.size(); ++i)
         {
             const double before = loaded.masses[i].position_.distance(loaded.masses[parent[i]].position_);
             const double now = after[i].position_.distance(after[parent[i]].position_);

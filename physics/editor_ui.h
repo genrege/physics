@@ -51,6 +51,7 @@ namespace editor_ui
     void destroy();
 
     editor_model& model();
+    std::optional<size_t> hovered_mass();
     std::wstring models_directory();
 
     void set_active(bool active);
@@ -71,6 +72,7 @@ namespace editor_ui
 
     void on_mouse_down(int x, int y, WPARAM keys);
     void on_mouse_move(int x, int y, WPARAM keys);
+    void on_mouse_leave();
     void on_mouse_up(int x, int y, WPARAM keys);
     void on_context_menu(int screen_x, int screen_y);
     bool on_key_down(WPARAM virtual_key);

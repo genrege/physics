@@ -168,13 +168,16 @@ public:
 
     TEST_METHOD(solar_system_matches_cpu_over_many_steps)
     {
-        const auto model = load_model_file(models_dir() / "solar_system.xml");
-        scenario s;
-        s.sim = model.sim;
-        s.masses = model.masses;
-        s.springs = model.springs;
-        s.dampers = model.dampers;
-        compare_engines(s, 0.0, [&](physics_engine& e) { e.step(2000, s.sim->dt()); });
+        for (const auto* file : { "solar_system.xml", "solar_system_asteroids.xml" })
+        {
+            const auto model = load_model_file(models_dir() / file);
+            scenario s;
+            s.sim = model.sim;
+            s.masses = model.masses;
+            s.springs = model.springs;
+            s.dampers = model.dampers;
+            compare_engines(s, 0.0, [&](physics_engine& e) { e.step(2000, s.sim->dt()); });
+        }
     }
 
     TEST_METHOD(every_cuda_device_matches_cpu)

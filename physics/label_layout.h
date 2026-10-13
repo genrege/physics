@@ -64,11 +64,13 @@ struct label_options
     size_t max_labels = 300;
     size_t max_candidates = 3000;   // bodies examined, in priority order
     float cell = 32.0f;
+    double cover_ratio = 0.01;      // a label may sit over a body below this fraction of its own priority (a planet over its small moons)
 };
 
 // Greedy, highest priority first. A label goes to the right of its body, else the left, and is dropped if it
-// would leave the view, touch an already placed label, or cover another labelled body. So zooming out or a
-// crowd leaves only the most important labels, and zooming in brings the rest back.
+// would leave the view, touch an already placed label, or cover another labelled body (other than one far less
+// important, which loses its own label instead). So zooming out or a crowd leaves only the most important
+// labels, and zooming in brings the rest back.
 // `measure(id)` returns the text size and is only called for bodies that are actually considered.
 template<typename Measure>
 std::vector<label_placement> place_labels(std::vector<label_body> bodies, float view_width, float view_height, Measure measure, const label_options& options = {})
@@ -111,7 +113,7 @@ std::vector<label_placement> place_labels(std::vector<label_body> bodies, float 
     struct rect { float left, top, right, bottom; };
     std::vector<rect> taken;
 
-    auto blocked = [&](const rect& r, size_t own_id) {
+    auto blocked = [&](const rect& r, size_t own_id, double own_priority) {
         const float pad = options.padding;
         for (const auto& t : taken)
         {
@@ -130,6 +132,8 @@ std::vector<label_placement> place_labels(std::vector<label_body> bodies, float 
                 {
                     const auto& b = bodies[i];
                     if (b.id == own_id)
+                        continue;
+                    if (b.priority < own_priority * options.cover_ratio)
                         continue;
                     const float radius = (std::max)(b.radius, 1.5f) + pad;
                     const float dx = (std::max)((std::max)(r.left - b.x, b.x - r.right), 0.0f);
@@ -164,7 +168,7 @@ std::vector<label_placement> place_labels(std::vector<label_body> bodies, float 
         {
             if (r.left < 0 || r.top < 0 || r.right > view_width || r.bottom > view_height)
                 continue;
-            if (blocked(r, b.id))
+            if (blocked(r, b.id, b.priority))
                 continue;
             taken.push_back(r);
             placed.push_back({ b.id, r.left, r.top });

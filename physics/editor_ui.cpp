@@ -31,7 +31,7 @@ namespace
         F_XMIN, F_XMAX, F_YMIN, F_YMAX, F_DT, F_SPEED, F_MING, F_SOFT, F_WL, F_WR, F_WT, F_WB,
         F_NM, F_NR, F_NE, F_NSK, F_NDK,
         F_MCOLOUR, F_MCOLOUR_DEFAULT, F_SCOLOUR, F_SCOLOUR_DEFAULT, F_LABEL,
-        F_TOOL, F_SELECTION, F_STATUS
+        F_TOOL, F_SELECTION, F_STATUS, F_SECTION
     };
 
     struct state
@@ -39,6 +39,9 @@ namespace
         HWND main = nullptr;
         HWND panel = nullptr;
         HINSTANCE instance = nullptr;
+        HFONT panel_font = nullptr;
+        HFONT section_font = nullptr;
+        HBRUSH panel_brush = nullptr;
         editor_host host;
         editor_model model;
         bool active = false;
@@ -60,6 +63,7 @@ namespace
 
         vector2 mouse_world;
         bool mouse_inside = false;
+        bool tracking_mouse_leave = false;
 
         HMENU file_menu = nullptr;
         HMENU edit_menu = nullptr;
@@ -68,12 +72,16 @@ namespace
         std::vector<int> tab_order;
         std::map<int, std::wstring> shown;
         WNDPROC edit_proc = nullptr;
+        int panel_scroll = 0;
+        int panel_content_height = 0;
+        std::optional<size_t> hovered_mass;
     };
 
     state S;
 
     constexpr double pick_pixels = 4.0;
-    constexpr int panel_client_width = 310;
+    constexpr int panel_client_width = 360;
+    constexpr int panel_client_height = 700;
 
     // ---- text helpers ----
 
@@ -223,6 +231,27 @@ namespace
         return RGB((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
     }
 
+    bool clear_hovered_mass()
+    {
+        const bool changed = S.hovered_mass.has_value();
+        S.hovered_mass.reset();
+        return changed;
+    }
+
+    bool update_hovered_mass(int x, int y)
+    {
+        const auto previous = S.hovered_mass;
+        if (S.drag.kind != drag_kind::none)
+            S.hovered_mass.reset();
+        else
+        {
+            const auto view = S.host.view();
+            S.hovered_mass = S.model.pick_mass(view.to_world(x, y), 6.0 / view.pixels_per_unit());
+        }
+
+        return previous != S.hovered_mass;
+    }
+
     const wchar_t* tool_name()
     {
         switch (S.tool)
@@ -317,6 +346,7 @@ namespace
 
     void changed()
     {
+        clear_hovered_mass();
         refresh_panel();
         if (S.host.invalidate)
             S.host.invalidate();
@@ -531,6 +561,25 @@ namespace
         }
     }
 
+    void draw_section(const DRAWITEMSTRUCT& item)
+    {
+        RECT background = item.rcItem;
+        HBRUSH brush = CreateSolidBrush(RGB(236, 242, 249));
+        FillRect(item.hDC, &background, brush);
+        DeleteObject(brush);
+
+        RECT text = item.rcItem;
+        InflateRect(&text, -9, 0);
+        SetBkMode(item.hDC, TRANSPARENT);
+        SetTextColor(item.hDC, RGB(38, 69, 105));
+        auto old_font = SelectObject(item.hDC, S.section_font);
+        const int length = GetWindowTextLengthW(item.hwndItem);
+        std::wstring title(size_t(length) + 1, L'\0');
+        GetWindowTextW(item.hwndItem, &title[0], length + 1);
+        DrawTextW(item.hDC, title.c_str(), length, &text, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        SelectObject(item.hDC, old_font);
+    }
+
     // Opens the system colour dialog (basic palette plus a full custom colour area).
     void choose_colour(bool for_masses)
     {
@@ -608,6 +657,44 @@ namespace
     {
         switch (message)
         {
+        case WM_CTLCOLORSTATIC:
+            SetBkMode(reinterpret_cast<HDC>(wparam), TRANSPARENT);
+            SetTextColor(reinterpret_cast<HDC>(wparam), RGB(55, 65, 81));
+            return reinterpret_cast<LRESULT>(S.panel_brush);
+        case WM_VSCROLL:
+        case WM_MOUSEWHEEL:
+        {
+            SCROLLINFO info = { sizeof(info), SIF_ALL };
+            GetScrollInfo(window, SB_VERT, &info);
+            int position = info.nPos;
+            if (message == WM_MOUSEWHEEL)
+                position -= GET_WHEEL_DELTA_WPARAM(wparam) / WHEEL_DELTA * 48;
+            else
+            {
+                switch (LOWORD(wparam))
+                {
+                case SB_LINEUP: position -= 32; break;
+                case SB_LINEDOWN: position += 32; break;
+                case SB_PAGEUP: position -= int(info.nPage); break;
+                case SB_PAGEDOWN: position += int(info.nPage); break;
+                case SB_THUMBTRACK:
+                case SB_THUMBPOSITION: position = info.nTrackPos; break;
+                case SB_TOP: position = info.nMin; break;
+                case SB_BOTTOM: position = info.nMax; break;
+                default: return 0;
+                }
+            }
+            info.fMask = SIF_POS;
+            info.nPos = std::clamp(position, info.nMin, std::max(info.nMin, info.nMax - int(info.nPage) + 1));
+            SetScrollInfo(window, SB_VERT, &info, TRUE);
+            const int next = info.nPos;
+            if (next != S.panel_scroll)
+            {
+                ScrollWindowEx(window, 0, S.panel_scroll - next, nullptr, nullptr, nullptr, nullptr, SW_SCROLLCHILDREN | SW_INVALIDATE);
+                S.panel_scroll = next;
+            }
+            return 0;
+        }
         case WM_COMMAND:
             if (HIWORD(wparam) == EN_KILLFOCUS)
                 commit_field(LOWORD(wparam));
@@ -625,8 +712,14 @@ namespace
                 reset_colour(false);
             return 0;
         case WM_DRAWITEM:
-            draw_swatch(*reinterpret_cast<const DRAWITEMSTRUCT*>(lparam));
+        {
+            const auto& item = *reinterpret_cast<const DRAWITEMSTRUCT*>(lparam);
+            if (item.CtlID == F_SECTION)
+                draw_section(item);
+            else
+                draw_swatch(item);
             return TRUE;
+        }
         case WM_CLOSE:
             S.panel_wanted = false;
             ShowWindow(window, SW_HIDE);
@@ -638,7 +731,7 @@ namespace
     HWND add_static(const wchar_t* text, int x, int y, int w, int h, int id = -1)
     {
         HWND control = CreateWindowExW(0, L"STATIC", text, WS_CHILD | WS_VISIBLE, x, y, w, h, S.panel, id < 0 ? nullptr : reinterpret_cast<HMENU>(INT_PTR(id)), S.instance, nullptr);
-        SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
+        SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(S.panel_font), TRUE);
         return control;
     }
 
@@ -649,38 +742,41 @@ namespace
         cls.lpfnWndProc = panel_proc;
         cls.hInstance = S.instance;
         cls.hCursor = LoadCursor(nullptr, IDC_ARROW);
-        cls.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_BTNFACE + 1);
+        S.panel_brush = CreateSolidBrush(RGB(249, 250, 252));
+        S.panel_font = CreateFontW(-15, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+        S.section_font = CreateFontW(-16, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+        cls.hbrBackground = S.panel_brush;
         cls.lpszClassName = L"PhysicsEditorPanel";
         RegisterClassExW(&cls);
 
-        // The window is resized to fit once all controls are placed.
-        const int row = 24;
-        RECT rc = { 0, 0, panel_client_width, 100 };
-        const DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
+        const int row = 28;
+        RECT rc = { 0, 0, panel_client_width, panel_client_height };
+        const DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_VSCROLL;
         AdjustWindowRectEx(&rc, style, FALSE, WS_EX_TOOLWINDOW);
 
         S.panel = CreateWindowExW(WS_EX_TOOLWINDOW, cls.lpszClassName, L"Properties", style, 0, 0, rc.right - rc.left, rc.bottom - rc.top, S.main, nullptr, S.instance, nullptr);
 
-        int y = 8;
-        add_static(L"", 8, y, panel_client_width - 16, 18, F_TOOL);
+        int y = 12;
+        add_static(L"", 12, y, panel_client_width - 32, 20, F_TOOL);
         y += 22;
-        add_static(L"", 8, y, panel_client_width - 16, 18, F_SELECTION);
-        y += 22;
+        add_static(L"", 12, y, panel_client_width - 32, 20, F_SELECTION);
+        y += 18;
 
         auto header = [&](const wchar_t* title) {
-            add_static(title, 8, y + 4, panel_client_width - 16, 18);
-            y += row + 4;
+            HWND control = CreateWindowExW(0, L"STATIC", title, WS_CHILD | WS_VISIBLE | SS_OWNERDRAW, 10, y, panel_client_width - 30, 28, S.panel, reinterpret_cast<HMENU>(INT_PTR(F_SECTION)), S.instance, nullptr);
+            SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(S.section_font), TRUE);
+            y += 38;
         };
         auto edit_row = [&](int id, const wchar_t* label) {
-            add_static(label, 8, y + 3, 130, 18);
-            HWND control = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, 140, y, 150, row - 2, S.panel, reinterpret_cast<HMENU>(INT_PTR(id)), S.instance, nullptr);
-            SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
+            add_static(label, 14, y + 5, 148, 20);
+            HWND control = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, 170, y, 176, row - 3, S.panel, reinterpret_cast<HMENU>(INT_PTR(id)), S.instance, nullptr);
+            SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(S.panel_font), TRUE);
             S.edit_proc = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(control, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(field_proc)));
             S.tab_order.push_back(id);
             y += row;
         };
 
-        header(L"Selected masses");
+        header(L"SELECTED MASSES");
         edit_row(F_M, L"Mass (kg)");
         edit_row(F_R, L"Radius");
         edit_row(F_E, L"Elasticity");
@@ -688,23 +784,23 @@ namespace
         edit_row(F_Y, L"y");
         edit_row(F_VX, L"Velocity x");
         edit_row(F_VY, L"Velocity y");
-        HWND fixed = CreateWindowExW(0, L"BUTTON", L"Fixed in place", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_3STATE, 140, y, 150, row - 2, S.panel, reinterpret_cast<HMENU>(INT_PTR(F_FIXED)), S.instance, nullptr);
-        SendMessageW(fixed, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
+        HWND fixed = CreateWindowExW(0, L"BUTTON", L"Fixed in place", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_3STATE, 170, y, 176, row - 3, S.panel, reinterpret_cast<HMENU>(INT_PTR(F_FIXED)), S.instance, nullptr);
+        SendMessageW(fixed, WM_SETFONT, reinterpret_cast<WPARAM>(S.panel_font), TRUE);
         y += row;
 
         // A swatch showing the shared colour of the selection, which opens the colour dialog, and a reset button.
         auto colour_row = [&](int swatch_id, int default_id) {
-            add_static(L"Colour", 8, y + 3, 130, 18);
-            HWND swatch = CreateWindowExW(0, L"BUTTON", L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, 140, y, 104, row - 2, S.panel, reinterpret_cast<HMENU>(INT_PTR(swatch_id)), S.instance, nullptr);
-            HWND reset = CreateWindowExW(0, L"BUTTON", L"Default", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 248, y, 44, row - 2, S.panel, reinterpret_cast<HMENU>(INT_PTR(default_id)), S.instance, nullptr);
-            SendMessageW(swatch, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
-            SendMessageW(reset, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
+            add_static(L"Colour", 14, y + 5, 148, 20);
+            HWND swatch = CreateWindowExW(0, L"BUTTON", L"", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW, 170, y, 118, row - 3, S.panel, reinterpret_cast<HMENU>(INT_PTR(swatch_id)), S.instance, nullptr);
+            HWND reset = CreateWindowExW(0, L"BUTTON", L"Default", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 294, y, 52, row - 3, S.panel, reinterpret_cast<HMENU>(INT_PTR(default_id)), S.instance, nullptr);
+            SendMessageW(swatch, WM_SETFONT, reinterpret_cast<WPARAM>(S.panel_font), TRUE);
+            SendMessageW(reset, WM_SETFONT, reinterpret_cast<WPARAM>(S.panel_font), TRUE);
             y += row;
         };
         colour_row(F_MCOLOUR, F_MCOLOUR_DEFAULT);
-        edit_row(F_LABEL, L"Label (blank = the mass)");
+        edit_row(F_LABEL, L"Label");
 
-        header(L"Selected spring / damper");
+        header(L"SELECTED SPRINGS & DAMPERS");
         edit_row(F_SK, L"Spring k");
         edit_row(F_SL0, L"Rest length");
         edit_row(F_SMIN, L"Break below (x length)");
@@ -712,40 +808,42 @@ namespace
         colour_row(F_SCOLOUR, F_SCOLOUR_DEFAULT);
         edit_row(F_DK, L"Damper k");
 
-        header(L"World");
+        header(L"WORLD");
         edit_row(F_XMIN, L"x min (left edge)");
         edit_row(F_XMAX, L"x max (right edge)");
         edit_row(F_YMIN, L"y min (top edge)");
         edit_row(F_YMAX, L"y max (bottom edge)");
         edit_row(F_DT, L"Time step");
-        edit_row(F_SPEED, L"Start speed (x real time)");
-        edit_row(F_MING, L"Gravity min mass");
-        edit_row(F_SOFT, L"Gravity softening (0 = none)");
+        edit_row(F_SPEED, L"Start speed (x real)");
+        edit_row(F_MING, L"Gravity min. mass");
+        edit_row(F_SOFT, L"Gravity softening");
 
-        add_static(L"Bounce off these edges:", 8, y + 3, panel_client_width - 16, 18);
+        add_static(L"Bounce off edges", 14, y + 5, panel_client_width - 30, 20);
         y += row;
         const struct { int id; const wchar_t* label; } walls[] = { { F_WL, L"Left" }, { F_WR, L"Right" }, { F_WT, L"Top" }, { F_WB, L"Bottom" } };
-        int wall_x = 8;
+        int wall_x = 12;
         for (const auto& wall : walls)
         {
-            HWND box = CreateWindowExW(0, L"BUTTON", wall.label, WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX, wall_x, y, 70, row - 2, S.panel, reinterpret_cast<HMENU>(INT_PTR(wall.id)), S.instance, nullptr);
-            SendMessageW(box, WM_SETFONT, reinterpret_cast<WPARAM>(GetStockObject(DEFAULT_GUI_FONT)), TRUE);
-            wall_x += 74;
+            HWND box = CreateWindowExW(0, L"BUTTON", wall.label, WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX, wall_x, y, 82, row - 3, S.panel, reinterpret_cast<HMENU>(INT_PTR(wall.id)), S.instance, nullptr);
+            SendMessageW(box, WM_SETFONT, reinterpret_cast<WPARAM>(S.panel_font), TRUE);
+            wall_x += 84;
         }
         y += row;
 
-        header(L"Defaults for newly placed items");
+        header(L"NEW ITEM DEFAULTS");
         edit_row(F_NM, L"New mass (kg)");
         edit_row(F_NR, L"New radius");
         edit_row(F_NE, L"New elasticity");
         edit_row(F_NSK, L"New spring k");
         edit_row(F_NDK, L"New damper k");
 
-        add_static(L"", 8, y + 4, panel_client_width - 16, 18, F_STATUS);
+        y += 8;
+        add_static(L"", 14, y, panel_client_width - 30, 36, F_STATUS);
+        y += 42;
 
-        RECT fitted = { 0, 0, panel_client_width, y + 4 + 18 + 8 };
-        AdjustWindowRectEx(&fitted, style, FALSE, WS_EX_TOOLWINDOW);
-        SetWindowPos(S.panel, nullptr, 0, 0, fitted.right - fitted.left, fitted.bottom - fitted.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        S.panel_content_height = y;
+        SCROLLINFO scroll = { sizeof(scroll), SIF_RANGE | SIF_PAGE | SIF_POS, 0, S.panel_content_height - 1, UINT(panel_client_height - 20), 0, 0 };
+        SetScrollInfo(S.panel, SB_VERT, &scroll, TRUE);
     }
 
     // ---- files ----
@@ -928,6 +1026,11 @@ editor_model& model()
     return S.model;
 }
 
+std::optional<size_t> hovered_mass()
+{
+    return S.hovered_mass;
+}
+
 bool active()
 {
     return S.active;
@@ -1009,9 +1112,17 @@ bool command(int id)
 
     switch (id)
     {
+    case ID_EDITOR_BUNDLED_SOLAR_SIMPLE:
+        if (confirm_discard())
+            open_file(models_directory() + L"\\solar_system_simplified.xml", L"solar_system_simplified (copy)", false);
+        return true;
     case ID_EDITOR_BUNDLED_SOLAR:
         if (confirm_discard())
             open_file(models_directory() + L"\\solar_system.xml", L"solar_system (copy)", false);
+        return true;
+    case ID_EDITOR_BUNDLED_SOLAR_ASTEROIDS:
+        if (confirm_discard())
+            open_file(models_directory() + L"\\solar_system_asteroids.xml", L"solar_system_asteroids (copy)", false);
         return true;
     case ID_EDITOR_BUNDLED_MILKYWAY:
         if (confirm_discard())
@@ -1132,7 +1243,9 @@ void create(HWND main_window, HINSTANCE instance, editor_host host)
         AppendMenuW(bundled, MF_STRING, ID_EDITOR_BUNDLED_FIRST + n - 1, text);
     }
     AppendMenuW(bundled, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(bundled, MF_STRING, ID_EDITOR_BUNDLED_SOLAR_SIMPLE, L"Solar System (simplified)");
     AppendMenuW(bundled, MF_STRING, ID_EDITOR_BUNDLED_SOLAR, L"Solar system (10 Oct 2026)");
+    AppendMenuW(bundled, MF_STRING, ID_EDITOR_BUNDLED_SOLAR_ASTEROIDS, L"Solar system with asteroid belt (10 Oct 2026)");
     AppendMenuW(bundled, MF_STRING, ID_EDITOR_BUNDLED_MILKYWAY, L"Milky way (50000 stars)");
 
     S.file_menu = GetSubMenu(bar, 0);
@@ -1177,15 +1290,33 @@ void create(HWND main_window, HINSTANCE instance, editor_host host)
 
 void destroy()
 {
+    clear_hovered_mass();
     if (S.panel)
     {
         DestroyWindow(S.panel);
         S.panel = nullptr;
     }
+    UnregisterClassW(L"PhysicsEditorPanel", S.instance);
+    if (S.panel_brush)
+    {
+        DeleteObject(S.panel_brush);
+        S.panel_brush = nullptr;
+    }
+    if (S.panel_font)
+    {
+        DeleteObject(S.panel_font);
+        S.panel_font = nullptr;
+    }
+    if (S.section_font)
+    {
+        DeleteObject(S.section_font);
+        S.section_font = nullptr;
+    }
 }
 
 void on_mouse_down(int x, int y, WPARAM keys)
 {
+    clear_hovered_mass();
     SetFocus(S.main);   // commits any field being edited before the click is interpreted
 
     const auto view = S.host.view();
@@ -1274,10 +1405,18 @@ void on_mouse_down(int x, int y, WPARAM keys)
 
 void on_mouse_move(int x, int y, WPARAM)
 {
+    if (!S.tracking_mouse_leave)
+    {
+        TRACKMOUSEEVENT tracking = { sizeof(tracking), TME_LEAVE, S.main, 0 };
+        S.tracking_mouse_leave = TrackMouseEvent(&tracking) != FALSE;
+    }
+
     const auto view = S.host.view();
     const auto point = view.to_world(x, y);
     S.mouse_world = point;
     S.mouse_inside = true;
+    if (update_hovered_mass(x, y) && S.host.invalidate)
+        S.host.invalidate();
 
     switch (S.drag.kind)
     {
@@ -1312,6 +1451,14 @@ void on_mouse_move(int x, int y, WPARAM)
             S.host.invalidate();
         break;
     }
+}
+
+void on_mouse_leave()
+{
+    S.tracking_mouse_leave = false;
+    S.mouse_inside = false;
+    if (clear_hovered_mass() && S.host.invalidate)
+        S.host.invalidate();
 }
 
 void on_mouse_up(int, int, WPARAM)

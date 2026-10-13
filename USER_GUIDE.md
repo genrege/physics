@@ -43,27 +43,94 @@ Pick one from the **Simulation** menu:
 | Falling balls | A grid of several hundred balls plus one heavy body |
 | Cradles of Newton | Rows of pendulum-like balls on springs |
 | Thing | A few hundred masses with no springs |
-| Solar system (10 Oct 2026) | The Sun, the eight planets and 21 moons, as they were on 2026-10-10 |
+| Solar System (simplified) | The Sun, the eight planets and 21 of the larger moons, as they were on 2026-10-10 |
+| Solar system (10 Oct 2026) | The Sun, the eight planets, Pluto and 458 moons, as they were on 2026-10-10 |
+| Solar system with asteroid belt (10 Oct 2026) | The same, plus the 10 most massive asteroids and the next 250 largest main-belt asteroids |
 
-### The solar system model
+### The solar system models
 
-`solar_system.xml` holds the Sun, Mercury to Neptune and 21 of the larger moons (the Moon; Phobos and Deimos;
-Io, Europa, Ganymede and Callisto; Mimas, Enceladus, Tethys, Dione, Rhea, Titan and Iapetus; Miranda, Ariel,
-Umbriel, Titania and Oberon; Triton and Proteus). Saturn's rings, Pluto and the minor moons are not included.
+`solar_system_simplified.xml` is the original, smaller model: the Sun, Mercury to Neptune and 21 of the larger
+moons (the Moon; Phobos and Deimos; Io, Europa, Ganymede and Callisto; Mimas, Enceladus, Tethys, Dione, Rhea,
+Titan and Iapetus; Miranda, Ariel, Umbriel, Titania and Oberon; Triton and Proteus). It has no Pluto, minor
+moons or asteroids, so it runs much faster and its world is smaller (10^13 m across). It is kept as it was, and is not
+produced by `tools/make_solar_system.py`.
 
-- Positions and velocities are the NASA/JPL Horizons values for 2026-10-10 00:00 TDB. Masses and radii are
-  real (metres and kilograms), so every body is far smaller than a pixel until you zoom in: use the mouse
-  wheel on the inner planets or on a gas giant to see its moons.
+`solar_system.xml` holds the Sun, Mercury to Neptune, Pluto and every natural satellite NASA/JPL Horizons has an
+ephemeris for: 458 moons, from the Moon, Phobos and Deimos to Jupiter's, Saturn's, Uranus's and Neptune's
+families and Pluto's five. Daphnis (a Saturn moon) is left out because Horizons has no ephemeris for it after
+2018. Saturn's rings are not included.
+
+`solar_system_asteroids.xml` is the same system plus 260 asteroids: Ceres, Vesta, Pallas, Hygiea, Interamnia,
+Davida, Eunomia, Juno, Psyche and Europa (the ten most massive; ranks 5 to 10 are close, so published
+estimates differ), followed by the next 250 largest main-belt asteroids by diameter.
+
+- Positions and velocities are the NASA/JPL Horizons values for 2026-10-10 00:00 TDB. Planet, large-moon and
+  top-asteroid masses and radii are published values (metres and kilograms). Many small moons have no
+  published mass or radius, and some asteroids have no measured mass: those use a radius of 2 km (moons) and a
+  density of 1500 kg/m^3 (moons) or a density for the asteroid's type, so their sizes and masses are
+  approximate. Every body is far smaller than a pixel until you zoom in: use the mouse wheel on the inner
+  planets or on a gas giant to see its moons.
 - The simulator is 2D, so each orbit is laid flat into the ecliptic plane (see the comment at the top of the
   file). Distances, speeds and where each body is along its orbit are preserved; the tilt of orbits and of
   the moon systems is not.
 - It runs at 100 s per step and 100 steps per frame, about 7 days of simulated time per second on screen.
-  Change *Time step* and *Steps per frame* in the editor to go faster or slower. Phobos (a 7.6 hour orbit) is
-  the limit on the time step: much more than 200 s makes it unstable.
-- The system is shifted to its centre of mass, so it does not drift. The world is 10^13 m across with no
+  Change *Time step* and *Steps per frame* in the editor to go faster or slower. The innermost moons of
+  Jupiter and Neptune (Metis and Naiad, about 7 hour orbits) are the limit on the time step, so keep it at
+  about 100 to 200 s; much larger steps will make them unstable. The asteroid model has 728 bodies and runs at roughly 40 frames per second on the
+  CPU engine, faster than on CUDA at this size.
+- The system is shifted to its centre of mass, so it does not drift. The world is 1.4 x 10^13 m across with no
   bouncing walls.
-- Like the other bundled simulations, it can be opened as an editable copy from *Editor > Open bundled
+- Like the other bundled simulations, they can be opened as editable copies from *Editor > Open bundled
   simulation*.
+- `tools/make_solar_system.py` regenerates `solar_system.xml` and `solar_system_asteroids.xml` from Horizons and the Small-Body Database (it needs
+  network access).
+
+**How accurate is the solar system model?** The real solar system is three-dimensional; the simulator is
+two-dimensional. To see what that costs, `solar_system.xml` was run for 365 days (315,360 steps of 100 s, from
+2026-10-10 00:00 TDB to 2027-10-10 00:00 TDB) on the CUDA engine and each planet's position relative to the Sun
+was compared with the NASA/JPL Horizons ephemeris (DE441) for the final instant. Because the model is flat,
+each Horizons position was first rotated into the model's plane using the same rotation that flattened that
+planet's orbit at the start.
+
+| Planet | Position error | Radial error | Angular error | Error as % of orbit radius |
+|---|---|---|---|---|
+| Mercury | 15,488 km | +1,922 km | 55.5" | 0.027% |
+| Venus | 5,776 km | +1,253 km | -10.7" | 0.0053% |
+| Earth | 2,306 km | -37 km | -3.2" | 0.0015% |
+| Mars | 5,651 km | -642 km | -5.3" | 0.0026% |
+| Jupiter | 369 km | -279 km | -0.06" | 0.00005% |
+| Saturn | 2,382 km | -1,121 km | 0.3" | 0.00017% |
+| Uranus | 2,409 km | +2,342 km | -0.04" | 0.00008% |
+| Neptune | 7,595 km | -4,301 km | -0.3" | 0.00017% |
+| Pluto | 220,070 km | -217,595 km | -1.3" | 0.0041% |
+
+*Position error* is the distance between the simulated and real planet. *Radial error* is the difference in
+distance from the Sun (positive means the simulated planet is further out). *Angular error* is the difference
+in direction as seen from the Sun, in arcseconds (positive means ahead along the orbit).
+
+Every planet is within about 0.03% of its true position after a year, which is far below what shows on screen.
+The errors are caused by the 2D flattening, not by the engine or the physics:
+
+- **Why 2D matters.** The planets' orbits are tilted by different amounts to the ecliptic (Mercury 7 degrees,
+  Venus 3.4, Mars 1.9, Pluto 17). Flattening rotates each orbit into one common plane, which keeps every
+  planet's distance, speed and position along its orbit, but puts the planets closer together than they really
+  are and changes the direction of the pulls they exert on one another. In 3D, a planet passing another is
+  usually a little above or below it; in the flat model it passes straight through the same plane. The planets
+  therefore perturb each other slightly differently from reality, and the difference builds up as a small drift
+  along each orbit.
+- **Where it shows most.** Mercury (a 7 degree tilt) and Pluto (a 17 degree tilt, plus a 3:2 resonance with
+  Neptune) have the largest errors. The outer gas giants lie close to the ecliptic and are nearly unaffected.
+- **How this was established.** An independent 3D Newtonian integration of the same bodies and masses (the
+  Sun, planets, the 21 larger moons, Pluto and its moons) matches Horizons to 137 km or better for Mercury to
+  Neptune over the same year, and to about 3,500 km for Pluto. So the 2D flattening accounts for nearly all of the
+  errors in the table. Relativity, the many small asteroids and the Sun's oblateness are not modelled, but they
+  would change Mercury's position by well under an arcsecond in a year.
+- **Pluto needs its moons.** Pluto itself wobbles about 24 m/s around the centre of mass of its system with
+  Charon. Without Charon and the other Pluto moons its position would drift by about 760,000 km in a year, so
+  keep Pluto's moons if you edit the model.
+
+The table is for one year from the start date; these figures were not measured over longer runs. For a precise
+position of a real planet, use a 3D ephemeris such as Horizons.
 
 **Mouse**
 

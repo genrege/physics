@@ -65,6 +65,8 @@ constexpr double speed_presets[] = { 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0 };
 
 // UI thread only.
 bool labels_visible = true;
+std::optional<POINT> mouse_client;   // run mode: where the mouse is in the window, for the hover label
+bool tracking_mouse_leave = false;
 std::optional<size_t> tracked;   // the mass kept in the middle of the window
 HMENU g_view_menu = NULL;
 std::unordered_map<std::string, label_size> label_size_cache;
@@ -524,115 +526,17 @@ label_size measure_label_d2d(const std::string& text)
     return size;
 }
 
-// Draws the labels that fit: Direct2D, or GDI onto `gdi` when that is the active path.
-void draw_labels(HDC gdi, const viewport& vp, const RECT& rc, const simulation& run_sim, const std::vector<mass_state>& states)
-{
-    if (!labels_visible)
-        return;
-
-    const float width = float(rc.right - rc.left);
-    const float height = float(rc.bottom - rc.top);
-
-    std::vector<label_body> bodies;
-    auto add = [&](size_t i, const vector2& pos, double radius, double m, bool wanted) {
-        if (!wanted)
-            return;
-        const float cx = static_cast<float>(vp.x_to_screen(pos.x()));
-        const float cy = static_cast<float>(vp.y_to_screen(pos.y()));
-        const float r = fabsf(static_cast<float>(vp.x_to_screen(pos.x() + radius) - vp.x_to_screen(pos.x())));
-        if (cx + r < 0 || cy + r < 0 || cx - r > width || cy - r > height)
-            return;
-        const bool is_tracked = !editing && tracked && *tracked == i;
-        bodies.push_back({ i, cx, cy, r, is_tracked ? (std::numeric_limits<double>::max)() : m, wanted });
-    };
-
-    std::function<std::string(size_t)> text_of;
-    if (editing)
-    {
-        const auto* masses = &editor_ui::model().document().masses;
-        for (size_t i = 0; i < masses->size(); ++i)
-            add(i, (*masses)[i].position, (*masses)[i].r, (*masses)[i].m, !((*masses)[i].label && (*masses)[i].label->empty()));
-        text_of = [masses](size_t i) { return (*masses)[i].label ? *(*masses)[i].label : format_mass((*masses)[i].m); };
-    }
-    else
-    {
-        const auto* masses = &run_sim.model().masses();
-        for (size_t i = 0; i < masses->size(); ++i)
-            add(i, states[i].position_, (*masses)[i].r(), (*masses)[i].m(), !((*masses)[i].label() && (*masses)[i].label()->empty()));
-        text_of = [masses](size_t i) { return label_text((*masses)[i]); };
-    }
-    if (bodies.empty())
-        return;
-
-    HFONT font = NULL;
-    HFONT old_font = NULL;
-    if (gdi)
-    {
-        font = CreateFontW(-11, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
-        old_font = (HFONT)SelectObject(gdi, font);
-        SetBkMode(gdi, TRANSPARENT);
-        SetTextColor(gdi, RGB(210, 220, 240));
-    }
-    else if (!g_pRenderTarget || !g_pBrushCustom || !ensure_label_format())
-        return;
-
-    auto measure = [&](size_t id) -> label_size {
-        const auto text = text_of(id);
-        if (!gdi)
-            return measure_label_d2d(text);
-        const auto wide = widen(text);
-        SIZE extent = {};
-        GetTextExtentPoint32W(gdi, wide.c_str(), int(wide.size()), &extent);
-        return { float(extent.cx), float(extent.cy) };
-    };
-
-    const auto placed = place_labels(std::move(bodies), width, height, measure);
-
-    if (!gdi)
-        g_pBrushCustom->SetColor(D2D1::ColorF(0.82f, 0.86f, 0.95f));
-    for (const auto& p : placed)
-    {
-        const auto text = text_of(p.id);
-        const auto wide = widen(text);
-        if (gdi)
-        {
-            TextOutW(gdi, int(p.left), int(p.top), wide.c_str(), int(wide.size()));
-        }
-        else
-        {
-            const auto size = measure_label_d2d(text);
-            g_pRenderTarget->DrawText(wide.c_str(), UINT32(wide.size()), g_pLabelFormat, D2D1::RectF(p.left, p.top, p.left + size.width + 2.0f, p.top + size.height), g_pBrushCustom);
-        }
-    }
-
-    if (gdi)
-    {
-        SelectObject(gdi, old_font);
-        DeleteObject(font);
-    }
-}
-
 // The mass drawn under a client point (or just beside it), preferring the nearest and then the heaviest.
-std::optional<size_t> mass_at(int px, int py)
+template<typename Masses>
+std::optional<size_t> pick_mass_in(const viewport& vp, int px, int py, const Masses& masses, const std::vector<mass_state>& states)
 {
-    RECT rc;
-    GetClientRect(hwnd_client, &rc);
-    if (rc.right <= rc.left || rc.bottom <= rc.top)
-        return std::nullopt;
-
-    const double aspect_ratio = double(rc.right - rc.left) / double(rc.bottom - rc.top);
-    const auto bounds = current_bounds();
-    viewport vp(rc, scale * bounds.xmin * aspect_ratio + pan_x, scale * bounds.xmax * aspect_ratio + pan_x, scale * bounds.ymin + pan_y, scale * bounds.ymax + pan_y);
-
     std::optional<size_t> best;
     double best_score = 0.0;
     double best_mass = 0.0;
-    const auto& masses = sim->model().masses();
 
-    EnterCriticalSection(&cs);
-    for (size_t i = 0; i < masses.size() && i < mass_states.size(); ++i)
+    for (size_t i = 0; i < masses.size() && i < states.size(); ++i)
     {
-        const auto& pos = mass_states[i].position_;
+        const auto& pos = states[i].position_;
         const double cx = vp.x_to_screen(pos.x());
         const double cy = vp.y_to_screen(pos.y());
         const double r = (std::max)(std::abs(double(vp.x_to_screen(pos.x() + masses[i].r())) - cx), 1.5);
@@ -646,6 +550,209 @@ std::optional<size_t> mass_at(int px, int py)
             best_mass = masses[i].m();
         }
     }
+    return best;
+}
+
+// Draws the labels that fit: Direct2D, or GDI onto `gdi` when that is the active path.
+void draw_labels(HDC gdi, const viewport& vp, const RECT& rc, const simulation& run_sim, const std::vector<mass_state>& states)
+{
+    std::optional<size_t> hovered;
+    if (editing)
+        hovered = editor_ui::hovered_mass();
+    else if (mouse_client)
+        hovered = pick_mass_in(vp, mouse_client->x, mouse_client->y, run_sim.model().masses(), states);
+
+    // The mass under the mouse, labelled whether or not labels are on.
+    struct hover_target { vector2 position; double r = 0.0; double m = 0.0; std::string name; };
+    std::optional<hover_target> hover;
+    if (hovered)
+    {
+        if (editing)
+        {
+            const auto& masses = editor_ui::model().document().masses;
+            if (*hovered < masses.size())
+            {
+                const auto& mass = masses[*hovered];
+                hover = hover_target{ mass.position, mass.r, mass.m, mass.label ? *mass.label : std::string() };
+            }
+        }
+        else if (*hovered < states.size())
+        {
+            const auto& mass = run_sim.model().masses()[*hovered];
+            hover = hover_target{ states[*hovered].position_, mass.r(), mass.m(), mass.label() ? *mass.label() : std::string() };
+        }
+        if (hover && hover->name.empty())
+            hover->name = "#" + std::to_string(*hovered);
+    }
+    if (!labels_visible && !hover)
+        return;
+
+    const float width = float(rc.right - rc.left);
+    const float height = float(rc.bottom - rc.top);
+
+    std::vector<label_body> bodies;
+    auto add = [&](size_t i, const vector2& pos, double radius, double m, bool wanted) {
+        // The hovered mass gets its own label, drawn last.
+        if (!wanted || (hover && hovered == i))
+            return;
+        const float cx = static_cast<float>(vp.x_to_screen(pos.x()));
+        const float cy = static_cast<float>(vp.y_to_screen(pos.y()));
+        const float r = fabsf(static_cast<float>(vp.x_to_screen(pos.x() + radius) - vp.x_to_screen(pos.x())));
+        if (cx + r < 0 || cy + r < 0 || cx - r > width || cy - r > height)
+            return;
+        const bool is_tracked = !editing && tracked && *tracked == i;
+        bodies.push_back({ i, cx, cy, r, is_tracked ? (std::numeric_limits<double>::max)() : m, wanted });
+    };
+
+    std::function<std::string(size_t)> text_of;
+    std::function<std::optional<uint32_t>(size_t)> colour_of;
+    if (editing)
+    {
+        const auto* masses = &editor_ui::model().document().masses;
+        for (size_t i = 0; i < masses->size(); ++i)
+        {
+            const bool has_label = !((*masses)[i].label && (*masses)[i].label->empty());
+            add(i, (*masses)[i].position, (*masses)[i].r, (*masses)[i].m, labels_visible && has_label);
+        }
+        text_of = [masses](size_t i) {
+            const auto& mass = (*masses)[i];
+            return mass.label ? *mass.label : format_mass(mass.m);
+        };
+        colour_of = [masses](size_t i) { return (*masses)[i].colour; };
+    }
+    else
+    {
+        const auto* masses = &run_sim.model().masses();
+        if (labels_visible)
+        {
+            for (size_t i = 0; i < masses->size(); ++i)
+                add(i, states[i].position_, (*masses)[i].r(), (*masses)[i].m(), !((*masses)[i].label() && (*masses)[i].label()->empty()));
+        }
+        text_of = [masses](size_t i) { return label_text((*masses)[i]); };
+        colour_of = [masses](size_t i) { return (*masses)[i].colour(); };
+    }
+    if (bodies.empty() && !hover)
+        return;
+
+    // A label is pale unless its body is a dark colour (asteroids, minor moons), which keeps it in the background too.
+    auto label_rgb = [&](size_t i) -> uint32_t {
+        const auto colour = colour_of(i);
+        if (colour && (std::max)({ (*colour >> 16) & 0xFFu, (*colour >> 8) & 0xFFu, *colour & 0xFFu }) < 0x70u)
+            return *colour;
+        return 0xD2DCF0;
+    };
+
+    HFONT font = NULL;
+    HFONT old_font = NULL;
+    if (gdi)
+    {
+        font = CreateFontW(-11, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+        old_font = (HFONT)SelectObject(gdi, font);
+        SetBkMode(gdi, TRANSPARENT);
+        SetTextColor(gdi, RGB(210, 220, 240));
+    }
+    else if (!g_pRenderTarget || !g_pBrushCustom || !ensure_label_format())
+        return;
+
+    auto measure_text = [&](const std::string& text) -> label_size {
+        if (!gdi)
+            return measure_label_d2d(text);
+        const auto wide = widen(text);
+        SIZE extent = {};
+        GetTextExtentPoint32W(gdi, wide.c_str(), int(wide.size()), &extent);
+        return { float(extent.cx), float(extent.cy) };
+    };
+
+    if (!bodies.empty())
+    {
+        const auto placed = place_labels(std::move(bodies), width, height, [&](size_t id) { return measure_text(text_of(id)); });
+
+        for (const auto& p : placed)
+        {
+            const auto text = text_of(p.id);
+            const auto wide = widen(text);
+            const uint32_t rgb = label_rgb(p.id);
+            if (gdi)
+            {
+                SetTextColor(gdi, RGB((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF));
+                TextOutW(gdi, int(p.left), int(p.top), wide.c_str(), int(wide.size()));
+            }
+            else
+            {
+                g_pBrushCustom->SetColor(D2D1::ColorF(rgb));
+                const auto size = measure_label_d2d(text);
+                g_pRenderTarget->DrawText(wide.c_str(), UINT32(wide.size()), g_pLabelFormat, D2D1::RectF(p.left, p.top, p.left + size.width + 2.0f, p.top + size.height), g_pBrushCustom);
+            }
+        }
+    }
+
+    // The label of the mass under the mouse: id when it has no label, then its mass, black on solid white. Shown even with labels off.
+    if (hover)
+    {
+        const std::string text = hover->name + " | " + format_mass(hover->m);
+        const auto wide = widen(text);
+
+        const float pad = 3.0f;
+        const label_size text_size = measure_text(text);
+        const label_size box = { text_size.width + 2.0f * pad, text_size.height + 2.0f * pad };
+
+        const float cx = float(vp.x_to_screen(hover->position.x()));
+        const float cy = float(vp.y_to_screen(hover->position.y()));
+        const float radius = fabsf(float(vp.x_to_screen(hover->position.x() + hover->r) - vp.x_to_screen(hover->position.x())));
+
+        float left = 0.0f;
+        float top = 0.0f;
+        const auto spot = place_labels({ { *hovered, cx, cy, (std::max)(radius, 3.0f), 0.0, true } }, width, height, [&](size_t) { return box; });
+        if (!spot.empty())
+        {
+            left = spot[0].left;
+            top = spot[0].top;
+        }
+        else
+        {
+            // Too close to the edge of the view for either side: keep it on screen.
+            left = (std::clamp)(cx + radius + 3.0f, 0.0f, (std::max)(0.0f, width - box.width));
+            top = (std::clamp)(cy - box.height * 0.5f, 0.0f, (std::max)(0.0f, height - box.height));
+        }
+
+        if (gdi)
+        {
+            HBRUSH white = CreateSolidBrush(RGB(255, 255, 255));
+            const RECT background = { LONG(left), LONG(top), LONG(left + box.width + 0.5f), LONG(top + box.height + 0.5f) };
+            FillRect(gdi, &background, white);
+            DeleteObject(white);
+            SetTextColor(gdi, RGB(0, 0, 0));
+            TextOutW(gdi, int(left + pad), int(top + pad), wide.c_str(), int(wide.size()));
+        }
+        else
+        {
+            g_pBrushCustom->SetColor(D2D1::ColorF(1.0f, 1.0f, 1.0f));
+            g_pRenderTarget->FillRectangle(D2D1::RectF(left, top, left + box.width, top + box.height), g_pBrushCustom);
+            g_pBrushCustom->SetColor(D2D1::ColorF(0.0f, 0.0f, 0.0f));
+            g_pRenderTarget->DrawText(wide.c_str(), UINT32(wide.size()), g_pLabelFormat, D2D1::RectF(left + pad, top + pad, left + pad + text_size.width + 2.0f, top + pad + text_size.height), g_pBrushCustom);
+        }
+    }
+
+    if (gdi)
+    {
+        SelectObject(gdi, old_font);
+        DeleteObject(font);
+    }
+}
+
+std::optional<size_t> mass_at(int px, int py)
+{
+    RECT rc;
+    GetClientRect(hwnd_client, &rc);
+    if (rc.right <= rc.left || rc.bottom <= rc.top)
+        return std::nullopt;
+
+    const double aspect_ratio = double(rc.right - rc.left) / double(rc.bottom - rc.top);
+    const auto bounds = current_bounds();
+    viewport vp(rc, scale * bounds.xmin * aspect_ratio + pan_x, scale * bounds.xmax * aspect_ratio + pan_x, scale * bounds.ymin + pan_y, scale * bounds.ymax + pan_y);
+
+    EnterCriticalSection(&cs);
+    const auto best = pick_mass_in(vp, px, py, sim->model().masses(), mass_states);
     LeaveCriticalSection(&cs);
     return best;
 }
@@ -1047,7 +1154,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     if (HMENU simulation_menu = GetSubMenu(menu_bar, 1))
    {
       AppendMenuW(simulation_menu, MF_SEPARATOR, 0, nullptr);
+      AppendMenuW(simulation_menu, MF_STRING, ID_SIMULATION_SOLAR_SIMPLE, L"Solar System (simplified)");
       AppendMenuW(simulation_menu, MF_STRING, ID_SIMULATION_SOLAR, L"Solar system (10 Oct 2026)");
+      AppendMenuW(simulation_menu, MF_STRING, ID_SIMULATION_SOLAR_ASTEROIDS, L"Solar system with asteroid belt (10 Oct 2026)");
       AppendMenuW(simulation_menu, MF_STRING, ID_SIMULATION_MILKYWAY, L"Milky way (50000 stars)");
    }
 
@@ -1196,8 +1305,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case ID_SIMULATION9:
                 create_simulation(L"simulation9.xml");
                 break;
+            case ID_SIMULATION_SOLAR_SIMPLE:
+                create_simulation(L"solar_system_simplified.xml");
+                break;
             case ID_SIMULATION_SOLAR:
                 create_simulation(L"solar_system.xml");
+                break;
+            case ID_SIMULATION_SOLAR_ASTEROIDS:
+                create_simulation(L"solar_system_asteroids.xml");
                 break;
             case ID_SIMULATION_MILKYWAY:
                 create_simulation(L"milky_way.xml");
@@ -1416,6 +1531,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     break;
     case WM_MOUSEMOVE:
     {
+        if (!editing)
+        {
+            mouse_client = POINT{ (int)(SHORT)LOWORD(lParam), (int)(SHORT)HIWORD(lParam) };
+            if (!tracking_mouse_leave)
+            {
+                TRACKMOUSEEVENT tracking = { sizeof(tracking), TME_LEAVE, hWnd, 0 };
+                tracking_mouse_leave = TrackMouseEvent(&tracking) != FALSE;
+            }
+            // The hover label follows the mouse even when the simulation is paused.
+            InvalidateRect(hWnd, NULL, FALSE);
+        }
         if (panning)
         {
             const int x = (int)(SHORT)LOWORD(lParam);
@@ -1454,6 +1580,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
     }
     break;
+    case WM_MOUSELEAVE:
+        // The editor tracks leaves too, and either may be pending when the mode changes.
+        tracking_mouse_leave = false;
+        mouse_client.reset();
+        editor_ui::on_mouse_leave();
+        InvalidateRect(hWnd, NULL, FALSE);
+        break;
     case WM_LBUTTONUP:
         if (editing)
             editor_ui::on_mouse_up((int)(SHORT)LOWORD(lParam), (int)(SHORT)HIWORD(lParam), wParam);
